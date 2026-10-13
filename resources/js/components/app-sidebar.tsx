@@ -12,7 +12,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { dashboard } from '@/routes';
+import { adminManagement, dashboard } from '@/routes';
 import { typeNavGroups } from '@/types';
 
 const navGroups : typeNavGroups = [
@@ -33,16 +33,19 @@ const navGroups : typeNavGroups = [
                 title: 'Kelola Produk',
                 href: '#',
                 icon: Package,
+                permission: 'Product Management',
             },
             {
                 title: 'Stok & Gudang',
                 href: '#',
                 icon: Boxes,
+                permission: 'Stock Management',
             },
             {
                 title: 'Kategori & Tag',
                 href: '#',
                 icon: Tags,
+                permission: 'Category Management'
             },
         ],
     },
@@ -53,21 +56,24 @@ const navGroups : typeNavGroups = [
                 title: 'Banner Slider',
                 href: '#',
                 icon: Image,
+                permission: 'Banner Organize',
             },
             {
                 title: 'Flash Sale',
                 href: '#',
                 icon: Zap,
+                permission: 'Sale Management'
             },
         ],
     },
     {
-        label: 'Staff Management',
+        label: 'Role-Base Access Control (RBAC)',
         items: [
             {
-                title: 'Staff List',
-                href: '#',
+                title: 'Kelola Admin',
+                href: adminManagement(),
                 icon: Users,
+                permission: 'Admin Management'
             }
         ]
     },

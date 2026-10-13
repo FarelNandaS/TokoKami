@@ -1,35 +1,44 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from "@inertiajs/react";
 import {
     SidebarGroup,
     SidebarGroupLabel,
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
-} from '@/components/ui/sidebar';
-import { useCurrentUrl } from '@/hooks/use-current-url';
-import type { NavItem } from '@/types';
+} from "@/components/ui/sidebar";
+import { useCurrentUrl } from "@/hooks/use-current-url";
+import type { NavItem } from "@/types";
 
-export function NavMain({ label, items }: { label: string, items: NavItem[] }) {
+export function NavMain({ label, items }: { label: string; items: NavItem[] }) {
     const { isCurrentUrl } = useCurrentUrl();
+    const { permissions } = usePage().props;
 
+    const userPermission = Array.isArray(permissions)
+        ? permissions
+        : [];
+    console.log(permissions);
     return (
         <SidebarGroup className="px-2 py-0">
             <SidebarGroupLabel>{label}</SidebarGroupLabel>
             <SidebarMenu>
-                {items.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                        <SidebarMenuButton
-                            asChild
-                            isActive={isCurrentUrl(item.href)}
-                            tooltip={{ children: item.title }}
-                        >
-                            <Link href={item.href} prefetch>
-                                {item.icon && <item.icon />}
-                                <span>{item.title}</span>
-                            </Link>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                ))}
+                {items.map((item, index) => {
+                    const hasAccess = !item.permission || userPermission.includes(item.permission);
+
+                    return hasAccess ? (
+                        <SidebarMenuItem key={index}>
+                            <SidebarMenuButton
+                                asChild
+                                isActive={isCurrentUrl(item.href)}
+                                tooltip={{ children: item.title }}
+                            >
+                                <Link href={item.href} prefetch>
+                                    {item.icon && <item.icon />}
+                                    <span>{item.title}</span>
+                                </Link>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                    ) : null;
+                })}
             </SidebarMenu>
         </SidebarGroup>
     );

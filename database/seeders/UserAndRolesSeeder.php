@@ -7,6 +7,7 @@ use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 class UserAndRolesSeeder extends Seeder
@@ -16,7 +17,20 @@ class UserAndRolesSeeder extends Seeder
      */
     public function run(): void
     {
-        $roleSuperAdmin = Role::create(['name' => 'Super Admin']);
+        $permissions = [
+            'Product Management',
+            'Stock Management',
+            'Category Management',
+            'Banner Organize',
+            'Sale Management',
+            'Admin Management',
+        ];
+
+        foreach ($permissions as $permission) {
+            Permission::create(['name' => $permission]);
+        }
+
+        $allPermisson = Permission::all();
 
         $superAdmin = User::create([
             'name' => 'Super Admin',
@@ -24,6 +38,7 @@ class UserAndRolesSeeder extends Seeder
             'password' => Hash::make('password'),
             'email_verified_at' => Carbon::now(),
         ]);
-        $superAdmin->assignRole($roleSuperAdmin);
+        // $superAdmin->assignRole($roleSuperAdmin);
+        $superAdmin->givePermissionTo($allPermisson);
     }
 }

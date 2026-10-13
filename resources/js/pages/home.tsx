@@ -251,9 +251,9 @@ export default function StorefrontHome({
       <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
         
         {/* ==================== 1. ANNOUNCEMENT BAR ==================== */}
-        {/* <div className="bg-primary text-primary-foreground text-xs py-2 px-4 text-center font-medium">
-          🎉 Promo Spesial Peluncuran TokoKami! Gunakan kode <span className="font-bold underline">TOKOKAMI2026</span> untuk Gratis Ongkir.
-        </div> */}
+      {/* <div className="bg-primary text-primary-foreground text-xs py-2 px-4 text-center font-medium">
+        🎉 Promo Spesial Peluncuran TokoKami! Gunakan kode <span className="font-bold underline">TOKOKAMI2026</span> untuk Gratis Ongkir.
+      </div> */}
 
         {/* ==================== 2. HEADER / NAVBAR (Tanpa Login/Register) ==================== */}
         <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border">
