@@ -51,7 +51,7 @@ export function DataTable<TData extends RowData>({
 
     return (
         <div>
-            <div className="flex items-center justify-between py-4">
+            <div className="flex items-center justify-between py-4 gap-4">
                 {canFilter && filterWhat ? (
                     <Input
                         placeholder={"Filter " + filterWhat + "..."}
@@ -71,7 +71,7 @@ export function DataTable<TData extends RowData>({
                 {sideElement}
             </div>
             <div className="overflow-hidden rounded-md border">
-                <Table>
+                <Table className="w-full table-fixed md:table-auto">
                     <TableHeader>
                         {table.getHeaderGroups().map((headerGroup) => (
                             <TableRow key={headerGroup.id}>
@@ -99,7 +99,7 @@ export function DataTable<TData extends RowData>({
                                     }
                                 >
                                     {row.getVisibleCells().map((cell) => (
-                                        <TableCell key={cell.id}>
+                                        <TableCell key={cell.id} className="md:whitespace-normal md:wrap-break-word truncate">
                                             <table.FlexRender cell={cell} />
                                         </TableCell>
                                     ))}

@@ -20,11 +20,21 @@ export default function AdminManagement({ data }: { data: Admin[] }) {
         processing,
         errors,
         reset,
+        clearErrors,
     } = useForm({
         name: "",
         email: "",
         password: "",
     });
+
+    const handleOpenChange = (open: boolean) => {
+        setIsOpen(open);
+
+        if (!open) {
+            reset();
+            clearErrors();
+        }
+    }
 
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
@@ -52,7 +62,6 @@ export default function AdminManagement({ data }: { data: Admin[] }) {
                         <Modal
                             btnTrigger={
                                 <Button
-                                    variant="outline"
                                     className="cursor-pointer"
                                 >
                                     Create User
@@ -60,14 +69,14 @@ export default function AdminManagement({ data }: { data: Admin[] }) {
                             }
                             title="Create Admin"
                             open={isOpen}
-                            onOpenChange={setIsOpen}
+                            onOpenChange={handleOpenChange}
                         >
                             <form
                                 onSubmit={handleSubmit}
                                 className="flex flex-col items-center gap-4"
                             >
                                 <div className="grid flex-1 gap-2 w-full">
-                                    <Label htmlFor="name">Name</Label>
+                                    <Label htmlFor="name" className="gap-0">Name<span className="text-lg text-destructive">*</span></Label>
                                     <Input
                                         id="name"
                                         value={formData.name}
@@ -75,6 +84,8 @@ export default function AdminManagement({ data }: { data: Admin[] }) {
                                             setData("name", e.target.value)
                                         }
                                         placeholder="Budi Santos"
+                                        required
+                                        aria-invalid={errors.name ? true : false}
                                     />
                                     {errors.name && (
                                         <span className="text-xs text-destructive">
@@ -83,7 +94,7 @@ export default function AdminManagement({ data }: { data: Admin[] }) {
                                     )}
                                 </div>
                                 <div className="grid flex-1 gap-2 w-full">
-                                    <Label htmlFor="email">Email</Label>
+                                    <Label htmlFor="email" className="gap-0">Email<span className="text-lg text-destructive">*</span></Label>
                                     <Input
                                         id="email"
                                         value={formData.email}
@@ -91,6 +102,8 @@ export default function AdminManagement({ data }: { data: Admin[] }) {
                                             setData("email", e.target.value)
                                         }
                                         placeholder="BudiSantos@gmail.com"
+                                        required
+                                        aria-invalid={errors.email ? true : false}
                                     />
                                     {errors.email && (
                                         <span className="text-xs text-destructive">
@@ -99,7 +112,7 @@ export default function AdminManagement({ data }: { data: Admin[] }) {
                                     )}
                                 </div>
                                 <div className="grid flex-1 gap-2 w-full">
-                                    <Label htmlFor="password">Password</Label>
+                                    <Label htmlFor="password" className="gap-0">Password<span className="text-lg text-destructive">*</span></Label>
                                     <div className="relative">
                                         <Input
                                             id="password"
@@ -117,6 +130,8 @@ export default function AdminManagement({ data }: { data: Admin[] }) {
                                             }
                                             placeholder="••••••••"
                                             className="pr-10"
+                                            required
+                                            aria-invalid={errors.password ? true : false}
                                         />
                                         <Button
                                             type="button"

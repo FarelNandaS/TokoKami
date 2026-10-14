@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Product;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,6 +21,24 @@ class MainController extends Controller
     public function dashboard()
     {
         return Inertia::render('admin/dashboard');
+    }
+
+    public function productManagement()
+    {
+        $products = Product::all();
+
+        $data = $products->map(function ($product) {
+            return [
+                'id' => $product->id,
+                'name' => $product->name,
+                'description' => $product->description,
+                'price' => $product->price,
+            ];
+        });
+
+        return Inertia::render('admin/productManagement', [
+            'data' => $data,
+        ]);
     }
 
     public function adminManagement()

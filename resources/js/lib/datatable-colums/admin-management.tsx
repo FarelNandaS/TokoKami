@@ -26,10 +26,19 @@ export type Admin = {
 function AdminPermissionModal({ admin }: { admin: Admin }) {
     const [isOpen, setIsOpen] = useState(false);
 
-    const { data, setData, put, processing } = useForm({
+    const { data, setData, put, processing, reset, clearErrors } = useForm({
         id: admin.id,
         permissions: admin.permissions || [],
     });
+
+    const handleOpenChange = (open: boolean) => {
+        setIsOpen(open);
+
+        if (!open) {
+            reset();
+            clearErrors();
+        }
+    }
 
     const handleCheckboxChange = (permissionName: string, checked: boolean) => {
         if (checked) {
@@ -109,6 +118,8 @@ function AdminPermissionModal({ admin }: { admin: Admin }) {
 }
 
 const handleDelete = (id: number) => {
+    toast.info('Processing Delete...')
+
     router.delete(deleteUser(), {
         data: { id },
         preserveScroll: true,
@@ -148,9 +159,9 @@ export const columns = columnHelper.columns([
         header: "Action",
         cell: ({ row }) => {
             const admin = row.original as Admin;
-            // console.log('test')
+
             return (
-                <div className="flex gap-2">
+                <div className="flex flex-col md:flex-row gap-2">
                     <AdminPermissionModal admin={admin} />
 
                     <ConfirmationAlert

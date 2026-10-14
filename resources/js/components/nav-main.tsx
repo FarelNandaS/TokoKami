@@ -13,16 +13,24 @@ export function NavMain({ label, items }: { label: string; items: NavItem[] }) {
     const { isCurrentUrl } = useCurrentUrl();
     const { permissions } = usePage().props;
 
-    const userPermission = Array.isArray(permissions)
-        ? permissions
-        : [];
-    console.log(permissions);
+    const userPermission = Array.isArray(permissions) ? permissions : [];
+
+    const visibleItems = items.filter(
+        (item) => !item.permission || userPermission.includes(item.permission),
+    );
+
+    if (visibleItems.length === 0) {
+        return null;
+    }
+
     return (
         <SidebarGroup className="px-2 py-0">
             <SidebarGroupLabel>{label}</SidebarGroupLabel>
             <SidebarMenu>
                 {items.map((item, index) => {
-                    const hasAccess = !item.permission || userPermission.includes(item.permission);
+                    const hasAccess =
+                        !item.permission ||
+                        userPermission.includes(item.permission);
 
                     return hasAccess ? (
                         <SidebarMenuItem key={index}>

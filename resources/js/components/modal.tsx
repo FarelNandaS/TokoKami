@@ -38,7 +38,9 @@ export function Modal({
                     {title ? <DialogTitle>{title}</DialogTitle> : null}
                     {desc ? <DialogDescription>{desc}</DialogDescription> : null}
                 </DialogHeader> : null}
-                {children}
+                <div className="max-h-[70vh] overflow-y-auto scrollbar-none">
+                    {children}
+                </div>
                 {btnCloseText ? <DialogFooter className="sm:justify-start">
                     <DialogClose asChild>
                         <Button type="button">{btnCloseText}</Button>

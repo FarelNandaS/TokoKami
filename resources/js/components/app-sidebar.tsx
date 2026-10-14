@@ -12,7 +12,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { adminManagement, dashboard } from '@/routes';
+import { adminManagement, dashboard, productManagement } from '@/routes';
 import { typeNavGroups } from '@/types';
 
 const navGroups : typeNavGroups = [
@@ -31,7 +31,7 @@ const navGroups : typeNavGroups = [
         items: [
             {
                 title: 'Kelola Produk',
-                href: '#',
+                href: productManagement(),
                 icon: Package,
                 permission: 'Product Management',
             },
