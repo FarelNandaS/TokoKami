@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Models\ProductImage;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -28,11 +29,16 @@ class MainController extends Controller
         $products = Product::all();
 
         $data = $products->map(function ($product) {
+            $coverImage = ProductImage::where('product_id', $product->id)->where('is_primary', true)->first();
+            $images = ProductImage::where('product_id', $product->id)->where('is_primary', false)->get();
+
             return [
                 'id' => $product->id,
                 'name' => $product->name,
                 'description' => $product->description,
                 'price' => $product->price,
+                'cover_image' => $coverImage,
+                'images' => $images,
             ];
         });
 

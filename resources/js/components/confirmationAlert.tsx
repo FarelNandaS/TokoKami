@@ -31,10 +31,10 @@ export function ConfirmationAlert({
                     <AlertDialogDescription>{desc}</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogCancel>
+                    <AlertDialogCancel className="cursor-pointer">
                         Cancel
                     </AlertDialogCancel>
-                    <AlertDialogAction onClick={handle}>
+                    <AlertDialogAction onClick={handle} className="cursor-pointer">
                         Continue
                     </AlertDialogAction>
                 </AlertDialogFooter>

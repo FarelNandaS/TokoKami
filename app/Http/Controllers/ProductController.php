@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class ProductController extends Controller
@@ -11,28 +13,58 @@ class ProductController extends Controller
     public function createProduct(Request $request)
     {
         $request->validate([
-            'name' => 'required|string',
-            'description' => 'required|string',
+            'name' => 'required|string|max:255',
+            'description' => 'required|string|max:255',
             'price' => 'required|integer',
-            'image' => 'image|nullable'
+            'images' => 'array|min:1',
+            'images.*' => 'image|mimes:png,jpg,jpeg,webp|max:2048',
         ]);
 
-        if (!empty($request->image)) {
+        DB::beginTransaction();
 
+        try {
+            $product = Product::create([
+                'name' => $request->name,
+                'description' => $request->description,
+                'price' => $request->price,
+            ]);
+
+            if ($request->hasFile('cover_image')) {
+                $path = $request->file('cover_image')[0]->store('products', 'public');
+
+                $product->images()->create([
+                    'image_path' => $path,
+                    'is_primary' => true,
+                ]);
+            }
+
+            if ($request->hasFile('images')) {
+                foreach ($request->file('images') as $index => $image) {
+                    $path = $image->store('products', 'public');
+
+                    $product->images()->create([
+                        'image_path' => $path,
+                        'is_primary' => false,
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            Inertia::flash('toast', ['type' => 'success', 'message' => 'Berhasil membuat product baru!']);
+
+            return back();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'Gagal membuat product baru!']);
+
+            return back()->withErrors(['error' => $e->getMessage()]);
         }
 
-        Product::create([
-            'name' => $request->name,
-            'description' => $request->description,
-            'price' => $request->price,
-        ]);
-
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Berhasil membuat product baru!']);
-
-        return back();
     }
 
-    public function deleteProduct(Request $request) {
+    public function deleteProduct(Request $request)
+    {
         $request->validate([
             'id' => 'required|integer',
         ]);
@@ -42,32 +74,95 @@ class ProductController extends Controller
 
         $product->delete();
 
-        Inertia::flash('toast', ['type'=>'success', 'message'=>'Berhasi menghapus product dengan nama: ' . $name]);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Berhasi menghapus product dengan nama: ' . $name]);
 
         return back();
     }
 
-    public function editProduct(Request $request) {
+    public function editProduct(Request $request)
+    {
         $request->validate([
-            'id'=>'required|integer',
-            'name'=>'required|string',
-            'description'=>'required|string',
-            'price'=>'required|integer',
-            'image'=>'image|nullable',
+            'id' => 'required|integer',
+            'name' => 'required|string',
+            'description' => 'required|string',
+            'price' => 'required|integer',
+            'existing_cover_id' => 'nullable|integer',
+            'existing_images' => 'array|nullable',
+            'existing_images.*' => 'integer',
+            'cover_image' => 'array|nullable',
+            'cover_image.*' => 'image|nullable|mimes:png,jpg,jpeg,webp|max:2048',
+            'images' => 'array|nullable',
+            'images.*' => 'image|nullable|mimes:png,jpg,jpeg,webp|max:2048',
         ]);
+        // dd($request->file('cover_image')[0]);
+        DB::beginTransaction();
 
-        if (!empty($request->image)) {
+        try {
+            $product = Product::with('images')->findOrFail($request->id);
 
+            $product->update([
+                'name' => $request->name,
+                'description' => $request->description,
+                'price' => $request->price,
+            ]);
+
+            $currentCover = $product->images()->where('is_primary', true)->first();
+
+            if ($request->hasFile('cover_image')) {
+                if ($currentCover) {
+                    if (Storage::disk('public')->exists($currentCover->image_path)) {
+                        Storage::disk('public')->delete($currentCover->image_path);
+                    }
+                    $currentCover->delete();
+                }
+
+                $coverPath = $request->file('cover_image')[0]->store('products', 'public');
+
+                $product->images()->create([
+                    'image_path' => $coverPath,
+                    'is_primary' => true,
+                ]);
+            } else if (is_null($request->existing_cover_id) && $currentCover) {
+                if (Storage::disk('public')->exists($currentCover->image_path)) {
+                    Storage::disk('public')->delete($currentCover->image_path);
+                }
+                $currentCover->delete();
+            }
+
+            $existingImgIds = $request->input('existing_images', []);
+
+            $imagesToDelete = $product->images()->where('is_primary', false)->whereNotIn('id', $existingImgIds)->get();
+
+            foreach ($imagesToDelete as $oldImage) {
+                if (Storage::disk('public')->exists($oldImage->image_path)) {
+                    Storage::disk('public')->delete($oldImage->image_path);
+                }
+
+                $oldImage->delete();
+            }
+
+            if ($request->hasFile('images')) {
+                foreach ($request->file('images') as $index => $image) {
+                    $path = $image->store('products', 'public');
+
+                    $product->images()->create([
+                        'image_path' => $path,
+                        'is_primary' => false,
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            Inertia::flash('toast', ['type' => 'success', 'message' => 'Berhasil merubah data product!']);
+
+            return back();
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'Gagal merubah data product!']);
+
+            return back()->withErrors(['error' => $e->getMessage()]);
         }
-
-        Product::findOrFail($request->id)->update([
-            'name'=>$request->name,
-            'description'=>$request->description,
-            'price'=>$request->price,
-        ]);
-
-        Inertia::flash('toast', ['type'=>'success', 'message'=>'Berhasil merubah data product!']);
-
-        return back();
     }
 }

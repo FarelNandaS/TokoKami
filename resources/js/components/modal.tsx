@@ -43,7 +43,7 @@ export function Modal({
                 </div>
                 {btnCloseText ? <DialogFooter className="sm:justify-start">
                     <DialogClose asChild>
-                        <Button type="button">{btnCloseText}</Button>
+                        <Button type="button" className="cursor-pointer">{btnCloseText}</Button>
                     </DialogClose>
                 </DialogFooter> : null}
             </DialogContent>
