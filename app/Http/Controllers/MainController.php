@@ -47,6 +47,23 @@ class MainController extends Controller
         ]);
     }
 
+    public function stockManagement()
+    {
+        $products = Product::all();
+
+        $data = $products->map(function ($product) {
+            return [
+                'id' => $product->id,
+                'name' => $product->name,
+                'stock' => $product->stock,
+            ];
+        });
+
+        return Inertia::render('admin/stockManagement', [
+            'data' => $data,
+        ]);
+    }
+
     public function adminManagement()
     {
         $admins = User::where('id', '!=', Auth::id())->get();

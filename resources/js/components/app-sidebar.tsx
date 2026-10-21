@@ -12,7 +12,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { adminManagement, dashboard, productManagement } from '@/routes';
+import { adminManagement, dashboard, productManagement, stockManagement } from '@/routes';
 import { typeNavGroups } from '@/types';
 
 const navGroups : typeNavGroups = [
@@ -37,7 +37,7 @@ const navGroups : typeNavGroups = [
             },
             {
                 title: 'Stok & Gudang',
-                href: '#',
+                href: stockManagement(),
                 icon: Boxes,
                 permission: 'Stock Management',
             },

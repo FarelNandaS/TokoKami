@@ -21,6 +21,11 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
         Route::put('edit-product', [ProductController::class, 'editProduct'])->name('edit-product');
     });
 
+    //Stock management routes
+    Route::middleware(['permission:Stock Management'])->group(function () {
+        Route::get('stock-management', [MainController::class, 'stockManagement'])->name('stock-management');
+    });
+
     //User / Admin management routes
     Route::middleware(['permission:Admin Management'])->group(function () {
         Route::get('admin-management', [MainController::class, 'adminManagement'])->name('admin-management');
