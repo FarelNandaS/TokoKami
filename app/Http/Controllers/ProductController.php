@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Attribute;
+use App\Models\AttributeValue;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +18,11 @@ class ProductController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'required|string|max:255',
             'price' => 'required|integer',
+            'product_attributes' => 'nullable|array|min:1',
+            'variants' => 'nullable|array|min:1',
+            'variants.*.sku' => 'string|unique:product_variants,sku',
+            'variants.*.price' => 'integer',
+            'variants.*.stock' => 'integer|min:0',
             'images' => 'array|min:1',
             'images.*' => 'image|mimes:png,jpg,jpeg,webp|max:2048',
         ]);
@@ -28,6 +35,53 @@ class ProductController extends Controller
                 'description' => $request->description,
                 'price' => $request->price,
             ]);
+
+            $valueMap = [];
+
+            if ($request->has('product_attributes')) {
+                foreach ($request->product_attributes as $attrData) {
+                    $attribute = Attribute::firstOrCreate(['name' => trim($attrData['name'])]);
+
+                    $values = explode(',', $attrData['values']);
+
+                    foreach ($values as $val) {
+                        $cleanVal = trim($val);
+                        if (empty($cleanVal)) continue;
+
+                        $attrValue = AttributeValue::firstOrCreate([
+                            'attribute_id' => $attribute->id,
+                            'value' => $cleanVal,
+                        ]);
+
+                        $valueMap[$cleanVal] = $attrValue->id;
+                    }
+                }
+            }
+
+            if ($request->has('variants')) {
+                foreach ($request->variants as $variantData) {
+                    $variant = $product->variants()->create([
+                        'sku' => $variantData['sku'],
+                        'price' => $variantData['price'],
+                        'stock' => $variantData['price'],
+                    ]);
+
+                    $combinationPart = explode('/', $variantData['combination']);
+                    $attributeValueIds = [];
+
+                    foreach ($combinationPart as $part) {
+                        $partClean = trim($part);
+
+                        if (isset($valueMap[$partClean])) {
+                            $attributeValueIds[] = $valueMap[$partClean];
+                        }
+                    }
+
+                    if (!empty($attributeValueIds)) {
+                        $variant->attributeValues()->attach($attributeValueIds);
+                    }
+                }
+            }
 
             if ($request->hasFile('cover_image')) {
                 $path = $request->file('cover_image')[0]->store('products', 'public');
