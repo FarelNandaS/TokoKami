@@ -32,6 +32,36 @@ class MainController extends Controller
             $coverImage = ProductImage::where('product_id', $product->id)->where('is_primary', true)->first();
             $images = ProductImage::where('product_id', $product->id)->where('is_primary', false)->get();
 
+            $variants = $product->variants()->with('attributeValues.attribute')->get();
+
+            $groupedAttributes = [];
+            foreach ($variants as $variant) {
+                foreach ($variant->attributeValues as $attrVal) {
+                    $attrName = $attrVal->attribute->name ?? null;
+                    $valText = $attrVal->value ?? null;
+
+                    if ($attrName && $valText) {
+                        if (!isset($groupedAttributes[$attrName])) {
+                            $groupedAttributes[$attrName] = [];
+                        }
+
+                        if (!in_array($valText, $groupedAttributes[$attrName])) {
+                            $groupedAttributes[$attrName][] = $valText;
+                        }
+                    }
+                }
+            }
+
+            $attributesForFrontend = [];
+            $attrId = 1;
+            foreach ($groupedAttributes as $name => $valuesArray) {
+                $attributesForFrontend[] = [
+                    'id' => $attrId++,
+                    'name' => $name,
+                    'values' => implode(', ', $valuesArray),
+                ];
+            }
+
             return [
                 'id' => $product->id,
                 'name' => $product->name,
@@ -39,6 +69,8 @@ class MainController extends Controller
                 'price' => $product->price,
                 'cover_image' => $coverImage,
                 'images' => $images,
+                'variants' => $variants,
+                'attributes' => $attributesForFrontend
             ];
         });
 

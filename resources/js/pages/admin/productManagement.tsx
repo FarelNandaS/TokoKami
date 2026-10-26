@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { columns, product } from "@/lib/datatable-colums/product-management";
 import { createProduct, productManagement } from "@/routes";
 import { Head, useForm } from "@inertiajs/react";
-import { Layers, Plus, Trash2 } from "lucide-react";
+import { Layers, Plus, Trash, Trash2 } from "lucide-react";
 import { FormEvent, useState } from "react";
 import { toast } from "sonner";
 
@@ -23,7 +23,6 @@ type GeneratedVariant = {
     combination: string;
     sku: string;
     price: number;
-    stock: number;
 };
 
 export default function ProductManagement({ data }: { data: product[] }) {
@@ -317,12 +316,12 @@ export default function ProductManagement({ data }: { data: product[] }) {
                                                     </div>
                                                     <Button
                                                         type="button"
-                                                        variant="ghost"
+                                                        variant="destructive"
                                                         size="sm"
                                                         onClick={() => handleDeleteAttributeCard(attr.id)}
-                                                        className="h-8 w-8 p-0 text-destructive cursor-pointer"
+                                                        className="h-8 w-8 p-0 cursor-pointer"
                                                     >
-                                                        <Trash2 className="h-4 w-4" />
+                                                        <Trash className="h-4 w-4" />
                                                     </Button>
                                                 </div>
                                             ))}
@@ -349,7 +348,6 @@ export default function ProductManagement({ data }: { data: product[] }) {
                                                             <th className="p-2">Kombinasi Varian</th>
                                                             <th className="p-2">SKU Unik</th>
                                                             <th className="p-2">Harga (Rp)</th>
-                                                            <th className="p-2 w-20">Stok</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
@@ -367,14 +365,6 @@ export default function ProductManagement({ data }: { data: product[] }) {
                                                                     <InputRupiah
                                                                         value={v.price}
                                                                         onValueChange={(value) => handleVariantTableChange(idx, "price", Number(value))}
-                                                                        className="h-7 text-xs"
-                                                                    />
-                                                                </td>
-                                                                <td className="p-2">
-                                                                    <Input
-                                                                        type="number"
-                                                                        value={v.stock}
-                                                                        onChange={(e) => handleVariantTableChange(idx, "stock", e.target.value)}
                                                                         className="h-7 text-xs"
                                                                     />
                                                                 </td>

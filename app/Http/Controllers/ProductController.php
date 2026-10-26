@@ -22,7 +22,6 @@ class ProductController extends Controller
             'variants' => 'nullable|array|min:1',
             'variants.*.sku' => 'string|unique:product_variants,sku',
             'variants.*.price' => 'integer',
-            'variants.*.stock' => 'integer|min:0',
             'images' => 'array|min:1',
             'images.*' => 'image|mimes:png,jpg,jpeg,webp|max:2048',
         ]);
@@ -63,7 +62,7 @@ class ProductController extends Controller
                     $variant = $product->variants()->create([
                         'sku' => $variantData['sku'],
                         'price' => $variantData['price'],
-                        'stock' => $variantData['price'],
+                        'stock' => 0,
                     ]);
 
                     $combinationPart = explode('/', $variantData['combination']);
@@ -140,6 +139,12 @@ class ProductController extends Controller
             'name' => 'required|string',
             'description' => 'required|string',
             'price' => 'required|integer',
+            'product_attributes' => 'nullable|array',
+            'variants' => 'nullable|array',
+            'variants.*.id' => 'nullable|integer|exists:product_variants,id',
+            'variants.*.sku' => 'required|string',
+            'variants.*.price' => 'required|integer',
+            'variants.*.stock' => 'required|integer|min:0',
             'existing_cover_id' => 'nullable|integer',
             'existing_images' => 'array|nullable',
             'existing_images.*' => 'integer',
@@ -159,6 +164,59 @@ class ProductController extends Controller
                 'description' => $request->description,
                 'price' => $request->price,
             ]);
+
+            if ($request->has('product_attributes') && $request->has('variants')) {
+                $valueMap = [];
+
+                foreach ($request->product_attributes as $attrData) {
+                    if (empty($attrData['name']) || empty($attrData['values'])) continue;
+
+                    $attribute = Attribute::firstOrCreate(['name' => trim($attrData['name'])]);
+                    $values = explode(',', $attrData['values']);
+
+                    foreach ($values as $val) {
+                        $cleanVal = trim($val);
+                        if (empty($cleanVal)) continue;
+
+                        $attrValue = AttributeValue::firstOrCreate([
+                            'attribute_id' => $attribute->id,
+                            'value' => $cleanVal,
+                        ]);
+
+                        $valueMap[$cleanVal] = $attrValue->id;
+                    }
+                }
+
+                $incomingVariantIds = collect($request->variants)->pluck('id')->filter()->toArray();
+
+                $product->variants()->whereNotIn('id', $incomingVariantIds)->delete();
+
+                foreach ($request->variants as $variantData) {
+                    $variant = $product->variants()->updateOrCreate(
+                        ['id' => $variantData['id'] ?? null],
+                        [
+                            'combination' => $variantData['combination'],
+                            'sku' => $variantData['sku'],
+                            'price' => $variantData['price'],
+                            'stock' => $variantData['stock'],
+                        ]
+                    );
+
+                    $combinationParts = explode('/', $variantData['combination']);
+                    $attributeValueIds = [];
+
+                    foreach ($combinationParts as $part) {
+                        $partClean = trim($part);
+                        if (isset($valueMap[$partClean])) {
+                            $attributeValueIds[] = $valueMap[$partClean];
+                        }
+                    }
+
+                    if (!empty($attributeValueIds)) {
+                        $variant->attributeValues()->sync($attributeValueIds);
+                    }
+                }
+            }
 
             $currentCover = $product->images()->where('is_primary', true)->first();
 
