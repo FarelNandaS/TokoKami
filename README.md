@@ -6,7 +6,7 @@ Web App e-commerce atau toko online yang sangat fluid dan flexibel karna bisa di
 - react 3
 
 ## Requirement
-- php 8.4^
+- php 8.3.30^
 - node 22.17.1^
 - npm 10.9.2^
 - npx 10.9.2^
