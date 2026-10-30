@@ -33,6 +33,8 @@ class MainController extends Controller
             $coverImage = ProductImage::where('product_id', $product->id)->where('is_primary', true)->first();
             $images = ProductImage::where('product_id', $product->id)->where('is_primary', false)->get();
 
+            $categories = $product->categories()->get()->pluck('id')->values();
+
             $variants = $product->variants()->with('attributeValues.attribute')->get();
 
             $groupedAttributes = [];
@@ -71,12 +73,16 @@ class MainController extends Controller
                 'cover_image' => $coverImage,
                 'images' => $images,
                 'variants' => $variants,
-                'attributes' => $attributesForFrontend
+                'attributes' => $attributesForFrontend,
+                'category_ids' => $categories,
             ];
         });
 
+        $categories = Category::all();
+
         return Inertia::render('admin/productManagement', [
             'data' => $data,
+            'categories' => $categories
         ]);
     }
 

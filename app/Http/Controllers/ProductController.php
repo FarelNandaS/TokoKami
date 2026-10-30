@@ -18,6 +18,8 @@ class ProductController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'required|string|max:255',
             'price' => 'required|integer',
+            'category_ids' => 'nullable|array|min:1',
+            'category_ids.*' => 'integer|exists:categories,id',
             'product_attributes' => 'nullable|array|min:1',
             'variants' => 'nullable|array|min:1',
             'variants.*.sku' => 'string|unique:product_variants,sku',
@@ -34,6 +36,10 @@ class ProductController extends Controller
                 'description' => $request->description,
                 'price' => $request->price,
             ]);
+
+            if ($request->has('category_ids')) {
+                $product->categories()->sync($request->category_ids);
+            }
 
             $valueMap = [];
 
@@ -139,6 +145,8 @@ class ProductController extends Controller
             'name' => 'required|string',
             'description' => 'required|string',
             'price' => 'required|integer',
+            'category_ids' => 'nullable|array|min:1',
+            'category_ids.*' => 'integer|exists:categories,id',
             'product_attributes' => 'nullable|array',
             'variants' => 'nullable|array',
             'variants.*.id' => 'nullable|integer|exists:product_variants,id',
@@ -164,6 +172,10 @@ class ProductController extends Controller
                 'description' => $request->description,
                 'price' => $request->price,
             ]);
+
+            if ($request->has('category_ids')) {
+                $product->categories()->sync($request->category_ids);
+            }
 
             if ($request->has('product_attributes') && $request->has('variants')) {
                 $valueMap = [];

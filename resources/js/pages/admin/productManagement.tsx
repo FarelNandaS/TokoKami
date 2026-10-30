@@ -5,12 +5,20 @@ import { Modal } from "@/components/modal";
 import { Button } from "@/components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { columns, product } from "@/lib/datatable-colums/product-management";
+import { Category } from "@/lib/datatable-colums/category-management";
+import { createColumns, product } from "@/lib/datatable-colums/product-management";
 import { createProduct, productManagement } from "@/routes";
 import { Head, useForm } from "@inertiajs/react";
-import { Layers, Plus, Trash, Trash2 } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { Layers, Plus, Trash } from "lucide-react";
+import { FormEvent, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 type AttributeCard = {
@@ -25,10 +33,18 @@ type GeneratedVariant = {
     price: number;
 };
 
-export default function ProductManagement({ data }: { data: product[] }) {
+export default function ProductManagement({
+    data,
+    categories,
+}: {
+    data: product[];
+    categories: Category[];
+}) {
     const [isOpen, setIsOpen] = useState(false);
     const [attributes, setAttributes] = useState<AttributeCard[]>([]);
     const [variants, setVariants] = useState<GeneratedVariant[]>([]);
+
+    const [selectCategory, setSelectCategory] = useState("");
 
     const {
         data: formData,
@@ -43,9 +59,12 @@ export default function ProductManagement({ data }: { data: product[] }) {
         name: "",
         description: "",
         price: "",
+        category_ids: [] as number[],
         cover_image: [] as File[],
         images: [] as File[],
     });
+
+    const columns = useMemo(() => createColumns(categories), []);
 
     const handleOpenChange = (open: boolean) => {
         setIsOpen(open);
@@ -55,7 +74,26 @@ export default function ProductManagement({ data }: { data: product[] }) {
             clearErrors();
             setAttributes([]);
             setVariants([]);
+            setSelectCategory("");
         }
+    };
+
+    const handleAddCategory = (value: string) => {
+        const catId = Number(value);
+        if (!catId) return;
+
+        if (!formData.category_ids.includes(catId)) {
+            setData("category_ids", [...formData.category_ids, catId]);
+        }
+
+        setSelectCategory("");
+    };
+
+    const handleRemoveCategory = (catId: number) => {
+        setData(
+            "category_ids",
+            formData.category_ids.filter((id) => id !== catId),
+        );
     };
 
     const hanldeAddAttributeCard = () => {
@@ -103,9 +141,9 @@ export default function ProductManagement({ data }: { data: product[] }) {
         );
 
         const cartesian = (arr: string[][]): string[][] =>
-            arr.reduce<string[][]>((a, b) =>
-                a.flatMap((x) => b.map((y) => [...x, y])),
-                [[]]
+            arr.reduce<string[][]>(
+                (a, b) => a.flatMap((x) => b.map((y) => [...x, y])),
+                [[]],
             );
 
         const combinations = cartesian(attrValueArrays);
@@ -114,20 +152,27 @@ export default function ProductManagement({ data }: { data: product[] }) {
             const combinationName = combo.join(" / ");
             return {
                 combination: combinationName,
-                sku: `${formData.name ? formData.name.toUpperCase().replace(/\s+/g, '') : 'PROD'}${combo.join().toUpperCase()}`,
+                sku: `${formData.name ? formData.name.toUpperCase().replace(/\s+/g, "") : "PROD"}${combo.join().toUpperCase()}`,
                 price: Number(formData.price) || 0,
                 stock: 0,
-            }
-        })
+            };
+        });
 
         setVariants(generated);
     };
 
-    const handleVariantTableChange = (index: number, field: keyof GeneratedVariant, value: string | number) => {
+    const handleVariantTableChange = (
+        index: number,
+        field: keyof GeneratedVariant,
+        value: string | number,
+    ) => {
         const updated = [...variants];
-        updated[index] = { ...updated[index], [field]: value } as GeneratedVariant;
+        updated[index] = {
+            ...updated[index],
+            [field]: value,
+        } as GeneratedVariant;
         setVariants(updated);
-    }
+    };
 
     const handleSumbit = (e: FormEvent) => {
         e.preventDefault();
@@ -271,14 +316,104 @@ export default function ProductManagement({ data }: { data: product[] }) {
                                         )}
                                     </Field>
 
+                                    <Field
+                                        className="gap-2"
+                                        orientation="vertical"
+                                    >
+                                        <FieldLabel className="gap-0">
+                                            Categories
+                                        </FieldLabel>
+
+                                        <div className="border p-2 rounded-lg bg-muted/30 space-y-2">
+                                            {/* Container Badge / Tag yang dipilih */}
+                                            <div className="flex flex-wrap gap-1.5 min-h-[32px] items-center">
+                                                {formData.category_ids.length >
+                                                0 ? (
+                                                    formData.category_ids.map(
+                                                        (id) => {
+                                                            const cat =
+                                                                categories.find(
+                                                                    (c) =>
+                                                                        c.id ===
+                                                                        id,
+                                                                );
+                                                            if (!cat)
+                                                                return null;
+                                                            return (
+                                                                <span
+                                                                    key={cat.id}
+                                                                    className="inline-flex items-center gap-1.5 bg-primary/10 text-primary px-2.5 py-1 rounded-md text-xs font-medium"
+                                                                >
+                                                                    {cat.name}
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() =>
+                                                                            handleRemoveCategory(
+                                                                                cat.id,
+                                                                            )
+                                                                        }
+                                                                        className="hover:text-destructive cursor-pointer text-muted-foreground font-bold"
+                                                                    >
+                                                                        &times;
+                                                                    </button>
+                                                                </span>
+                                                            );
+                                                        },
+                                                    )
+                                                ) : (
+                                                    <span className="text-xs text-muted-foreground px-1">
+                                                        Belum ada kategori yang
+                                                        dipilih...
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {/* Dropdown untuk memilih kategori yang belum dipilih */}
+                                            <Select
+                                                onValueChange={(val) => {
+                                                    setSelectCategory(val);
+                                                    handleAddCategory(val);
+                                                }}
+                                                defaultValue=""
+                                                value={selectCategory}
+                                            >
+                                                <SelectTrigger className="w-full">
+                                                    <SelectValue placeholder="-- Pilih & Tambahkan Kategori --" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {categories
+                                                        .filter(
+                                                            (cat) =>
+                                                                !formData.category_ids.includes(
+                                                                    cat.id,
+                                                                ),
+                                                        )
+                                                        .map((cat) => (
+                                                            <SelectItem
+                                                                key={cat.id}
+                                                                value={String(
+                                                                    cat.id,
+                                                                )}
+                                                            >
+                                                                {cat.name}
+                                                            </SelectItem>
+                                                        ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </Field>
+
                                     <div className="border-t pt-4 mt-2">
                                         <div className="flex justify-between items-center mb-3">
                                             <div>
                                                 <h3 className="font-semibold text-sm flex items-center gap-1.5">
-                                                    <Layers className="h-4 w-4" /> Atribut & Pilihan Varian
+                                                    <Layers className="h-4 w-4" />{" "}
+                                                    Atribut & Pilihan Varian
                                                 </h3>
                                                 <p className="text-xs text-muted-foreground">
-                                                    Buat atribut (misal: Warna, Ukuran) dan pisahkan nilainya dengan koma.
+                                                    Buat atribut (misal: Warna,
+                                                    Ukuran) dan pisahkan
+                                                    nilainya dengan koma.
                                                 </p>
                                             </div>
                                             <Button
@@ -288,29 +423,52 @@ export default function ProductManagement({ data }: { data: product[] }) {
                                                 onClick={hanldeAddAttributeCard}
                                                 className="cursor-pointer"
                                             >
-                                                <Plus className="h-4 w-4 mr-1" /> Tambah Atribut
+                                                <Plus className="h-4 w-4 mr-1" />{" "}
+                                                Tambah Atribut
                                             </Button>
                                         </div>
 
                                         {/* List Card Atribut */}
                                         <div className="space-y-3 mb-4">
                                             {attributes.map((attr) => (
-                                                <div key={attr.id} className="border p-3 rounded-lg bg-muted/30 flex gap-3 items-end">
+                                                <div
+                                                    key={attr.id}
+                                                    className="border p-3 rounded-lg bg-muted/30 flex gap-3 items-end"
+                                                >
                                                     <div className="flex-1">
-                                                        <label className="text-xs font-medium mb-1 block">Nama Atribut</label>
+                                                        <label className="text-xs font-medium mb-1 block">
+                                                            Nama Atribut
+                                                        </label>
                                                         <Input
                                                             placeholder="Cth: Warna"
                                                             value={attr.name}
-                                                            onChange={(e) => handleAttributeChange(attr.id, "name", e.target.value)}
+                                                            onChange={(e) =>
+                                                                handleAttributeChange(
+                                                                    attr.id,
+                                                                    "name",
+                                                                    e.target
+                                                                        .value,
+                                                                )
+                                                            }
                                                             className="h-8 text-xs"
                                                         />
                                                     </div>
                                                     <div className="flex-[2]">
-                                                        <label className="text-xs font-medium mb-1 block">Nilai (Pisahkan dengan koma)</label>
+                                                        <label className="text-xs font-medium mb-1 block">
+                                                            Nilai (Pisahkan
+                                                            dengan koma)
+                                                        </label>
                                                         <Input
                                                             placeholder="Cth: Merah, Biru, Hijau"
                                                             value={attr.values}
-                                                            onChange={(e) => handleAttributeChange(attr.id, "values", e.target.value)}
+                                                            onChange={(e) =>
+                                                                handleAttributeChange(
+                                                                    attr.id,
+                                                                    "values",
+                                                                    e.target
+                                                                        .value,
+                                                                )
+                                                            }
                                                             className="h-8 text-xs"
                                                         />
                                                     </div>
@@ -318,7 +476,11 @@ export default function ProductManagement({ data }: { data: product[] }) {
                                                         type="button"
                                                         variant="destructive"
                                                         size="sm"
-                                                        onClick={() => handleDeleteAttributeCard(attr.id)}
+                                                        onClick={() =>
+                                                            handleDeleteAttributeCard(
+                                                                attr.id,
+                                                            )
+                                                        }
                                                         className="h-8 w-8 p-0 cursor-pointer"
                                                     >
                                                         <Trash className="h-4 w-4" />
@@ -340,36 +502,78 @@ export default function ProductManagement({ data }: { data: product[] }) {
                                     {/* --- BAGIAN 2: TABEL MATRIKS HASIL GENERATE --- */}
                                     {variants.length > 0 && (
                                         <div className="border-t pt-4 mt-2">
-                                            <h3 className="font-semibold text-sm mb-2">Daftar Kombinasi Varian ({variants.length})</h3>
+                                            <h3 className="font-semibold text-sm mb-2">
+                                                Daftar Kombinasi Varian (
+                                                {variants.length})
+                                            </h3>
                                             <div className="border rounded-md overflow-hidden">
                                                 <table className="w-full text-xs text-left">
                                                     <thead className="bg-muted text-muted-foreground border-b">
                                                         <tr>
-                                                            <th className="p-2">Kombinasi Varian</th>
-                                                            <th className="p-2">SKU Unik</th>
-                                                            <th className="p-2">Harga (Rp)</th>
+                                                            <th className="p-2">
+                                                                Kombinasi Varian
+                                                            </th>
+                                                            <th className="p-2">
+                                                                SKU Unik
+                                                            </th>
+                                                            <th className="p-2">
+                                                                Harga (Rp)
+                                                            </th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        {variants.map((v, idx) => (
-                                                            <tr key={idx} className="border-b">
-                                                                <td className="p-2 font-medium">{v.combination}</td>
-                                                                <td className="p-2">
-                                                                    <Input
-                                                                        value={v.sku}
-                                                                        onChange={(e) => handleVariantTableChange(idx, "sku", e.target.value)}
-                                                                        className="h-7 text-xs"
-                                                                    />
-                                                                </td>
-                                                                <td className="p-2">
-                                                                    <InputRupiah
-                                                                        value={v.price}
-                                                                        onValueChange={(value) => handleVariantTableChange(idx, "price", Number(value))}
-                                                                        className="h-7 text-xs"
-                                                                    />
-                                                                </td>
-                                                            </tr>
-                                                        ))}
+                                                        {variants.map(
+                                                            (v, idx) => (
+                                                                <tr
+                                                                    key={idx}
+                                                                    className="border-b"
+                                                                >
+                                                                    <td className="p-2 font-medium">
+                                                                        {
+                                                                            v.combination
+                                                                        }
+                                                                    </td>
+                                                                    <td className="p-2">
+                                                                        <Input
+                                                                            value={
+                                                                                v.sku
+                                                                            }
+                                                                            onChange={(
+                                                                                e,
+                                                                            ) =>
+                                                                                handleVariantTableChange(
+                                                                                    idx,
+                                                                                    "sku",
+                                                                                    e
+                                                                                        .target
+                                                                                        .value,
+                                                                                )
+                                                                            }
+                                                                            className="h-7 text-xs"
+                                                                        />
+                                                                    </td>
+                                                                    <td className="p-2">
+                                                                        <InputRupiah
+                                                                            value={
+                                                                                v.price
+                                                                            }
+                                                                            onValueChange={(
+                                                                                value,
+                                                                            ) =>
+                                                                                handleVariantTableChange(
+                                                                                    idx,
+                                                                                    "price",
+                                                                                    Number(
+                                                                                        value,
+                                                                                    ),
+                                                                                )
+                                                                            }
+                                                                            className="h-7 text-xs"
+                                                                        />
+                                                                    </td>
+                                                                </tr>
+                                                            ),
+                                                        )}
                                                     </tbody>
                                                 </table>
                                             </div>

@@ -15,6 +15,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { InputRupiah } from "@/components/input-rupiah";
 import { InputFile } from "@/components/input-file";
+import { Category } from "./category-management";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type productImages = {
     id: number;
@@ -50,10 +52,18 @@ export type product = {
     images: productImages[];
     variants: productVariant[];
     attributes: AttributeCard[];
+    category_ids: number[];
 };
 
-function EditProductModal({ product }: { product: product }) {
+function EditProductModal({
+    product,
+    categories,
+}: {
+    product: product;
+    categories: Category[];
+}) {
     const [isOpen, setIsOpen] = useState(false);
+    const [selectCategory, setSelectCategory] = useState("");
     const [attributes, setAttributes] = useState<AttributeCard[]>(
         product.attributes || [],
     );
@@ -100,6 +110,7 @@ function EditProductModal({ product }: { product: product }) {
         cover_image: [] as File[],
         images: [] as File[],
         variants: variants,
+        category_ids: product.category_ids || [],
         _method: "PUT",
     });
 
@@ -109,6 +120,7 @@ function EditProductModal({ product }: { product: product }) {
         if (!open) {
             reset();
             clearErrors();
+            setSelectCategory("");
         } else {
             setVariants(
                 product.variants
@@ -125,6 +137,24 @@ function EditProductModal({ product }: { product: product }) {
             );
             setAttributes(product.attributes || []);
         }
+    };
+
+    const handleAddCategory = (value: string) => {
+        const catId = Number(value);
+        if (!catId) return;
+
+        if (!data.category_ids.includes(catId)) {
+            setData("category_ids", [...data.category_ids, catId]);
+        }
+
+        setSelectCategory("");
+    };
+
+    const handleRemoveCategory = (catId: number) => {
+        setData(
+            "category_ids",
+            data.category_ids.filter((id) => id !== catId),
+        );
     };
 
     const handleAddAttributeCard = () => {
@@ -354,6 +384,79 @@ function EditProductModal({ product }: { product: product }) {
                             </span>
                         )}
                     </Field>
+
+                    <Field className="gap-2" orientation="vertical">
+                        <FieldLabel className="gap-0">Categories</FieldLabel>
+
+                        <div className="border p-2 rounded-lg bg-muted/30 space-y-2">
+                            {/* Container Badge / Tag yang dipilih */}
+                            <div className="flex flex-wrap gap-1.5 min-h-[32px] items-center">
+                                {data.category_ids.length > 0 ? (
+                                    data.category_ids.map((id) => {
+                                        const cat = categories.find(
+                                            (c) => c.id === id,
+                                        );
+                                        if (!cat) return null;
+                                        return (
+                                            <span
+                                                key={cat.id}
+                                                className="inline-flex items-center gap-1.5 bg-primary/10 text-primary px-2.5 py-1 rounded-md text-xs font-medium"
+                                            >
+                                                {cat.name}
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        handleRemoveCategory(
+                                                            cat.id,
+                                                        )
+                                                    }
+                                                    className="hover:text-destructive cursor-pointer text-muted-foreground font-bold"
+                                                >
+                                                    &times;
+                                                </button>
+                                            </span>
+                                        );
+                                    })
+                                ) : (
+                                    <span className="text-xs text-muted-foreground px-1">
+                                        Belum ada kategori yang dipilih...
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Dropdown untuk memilih kategori yang belum dipilih */}
+                            <Select
+                                onValueChange={(val) => {
+                                    setSelectCategory(val);
+                                    handleAddCategory(val);
+                                }}
+                                defaultValue=""
+                                value={selectCategory}
+                            >
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="-- Pilih & Tambahkan Kategori --" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {categories
+                                        .filter(
+                                            (cat) =>
+                                                !data.category_ids.includes(
+                                                    cat.id,
+                                                ),
+                                        )
+                                        .map((cat) => (
+                                            <SelectItem
+                                                key={cat.id}
+                                                value={String(cat.id)}
+                                            >
+                                                {cat.name}
+                                            </SelectItem>
+                                        ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </Field>
+
                     <div className="border-t pt-4 mt-2">
                         <div className="flex justify-between items-center mb-3">
                             <h3 className="font-semibold text-sm">
@@ -547,62 +650,67 @@ const handleDelete = (id: number) => {
     });
 };
 
-const columnHelper = createColumnHelper<DataTableFeatures, product>();
+export const createColumns = (categories: Category[]) => {
+    const columnHelper = createColumnHelper<DataTableFeatures, product>();
 
-export const columns = columnHelper.columns([
-    columnHelper.display({
-        id: "no",
-        header: "No",
-        cell: ({ row, table }) => {
-            return (
-                <span>{table.getFilteredRowModel().rows.indexOf(row) + 1}</span>
-            );
-        },
-    }),
-    columnHelper.accessor("name", {
-        header: "Name",
-    }),
-    columnHelper.accessor("description", {
-        header: "Description",
-    }),
-    columnHelper.accessor("price", {
-        header: "Price",
-        cell: ({ row, table }) => {
-            const amount = row.original.price;
+    return columnHelper.columns([
+        columnHelper.display({
+            id: "no",
+            header: "No",
+            cell: ({ row, table }) => {
+                return (
+                    <span>
+                        {table.getFilteredRowModel().rows.indexOf(row) + 1}
+                    </span>
+                );
+            },
+        }),
+        columnHelper.accessor("name", {
+            header: "Name",
+        }),
+        columnHelper.accessor("description", {
+            header: "Description",
+        }),
+        columnHelper.accessor("price", {
+            header: "Price",
+            cell: ({ row }) => {
+                const amount = row.original.price;
 
-            const formatted = new Intl.NumberFormat("id-ID", {
-                style: "currency",
-                currency: "IDR",
-                minimumFractionDigits: 0,
-            }).format(amount);
+                const formatted = new Intl.NumberFormat("id-ID", {
+                    style: "currency",
+                    currency: "IDR",
+                    minimumFractionDigits: 0,
+                }).format(amount);
 
-            return formatted;
-        },
-    }),
-    columnHelper.display({
-        id: "action",
-        header: "Action",
-        cell: ({ row }) => {
-            const product = row.original as product;
+                return formatted;
+            },
+        }),
+        columnHelper.display({
+            id: "action",
+            header: "Action",
+            cell: ({ row, table }) => {
+                const product = row.original as product;
+                const Categories = table.options.meta;
+                console.log(table.options.meta);
+                return (
+                    <div className="flex flex-col md:flex-row gap-2">
+                        <EditProductModal product={product} categories={categories}/>
 
-            return (
-                <div className="flex flex-col md:flex-row gap-2">
-                    <EditProductModal product={product} />
-
-                    <ConfirmationAlert
-                        handle={() => handleDelete(product.id)}
-                        title="Anda Yakin Menghapus Product Ini?"
-                        desc="Tindakan ini tidak dapat dibatalkan. Menghapus akun admin ini akan menghilangkan seluruh data profil dan hak aksesnya ke panel kontrol."
-                    >
-                        <Button
-                            variant="destructive"
-                            className="cursor-pointer"
+                        <ConfirmationAlert
+                            handle={() => handleDelete(product.id)}
+                            title="Anda Yakin Menghapus Product Ini?"
+                            desc="Tindakan ini tidak dapat dibatalkan. Menghapus akun admin ini akan menghilangkan seluruh data profil dan hak aksesnya ke panel kontrol."
                         >
-                            <Trash />
-                        </Button>
-                    </ConfirmationAlert>
-                </div>
-            );
-        },
-    }),
-]);
+                            <Button
+                                variant="destructive"
+                                className="cursor-pointer"
+                            >
+                                <Trash />
+                            </Button>
+                        </ConfirmationAlert>
+                    </div>
+                );
+            },
+        }),
+    ]);
+};
