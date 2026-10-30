@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\MainController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\UserController;
@@ -24,6 +25,15 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
     //Stock management routes
     Route::middleware(['permission:Stock Management'])->group(function () {
         Route::get('stock-management', [MainController::class, 'stockManagement'])->name('stock-management');
+    });
+
+    ///Category management routes
+    Route::middleware(['permission:Category Management'])->group(function () {
+        Route::get('category-management', [MainController::class, 'categoryManagement'])->name('category-management');
+
+        Route::post('create-category', [CategoryController::class, 'createCategory'])->name('create-category');
+        Route::delete('delete-category', [CategoryController::class, 'deleteCategory'])->name('delete-category');
+        Route::put('edit-category', [CategoryController::class, 'editCategory'])->name('edit-category');
     });
 
     //User / Admin management routes

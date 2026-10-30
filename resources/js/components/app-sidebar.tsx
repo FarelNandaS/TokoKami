@@ -12,7 +12,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { adminManagement, dashboard, productManagement, stockManagement } from '@/routes';
+import { adminManagement, categoryManagement, dashboard, productManagement, stockManagement } from '@/routes';
 import { typeNavGroups } from '@/types';
 
 const navGroups : typeNavGroups = [
@@ -43,7 +43,7 @@ const navGroups : typeNavGroups = [
             },
             {
                 title: 'Kategori & Tag',
-                href: '#',
+                href: categoryManagement(),
                 icon: Tags,
                 permission: 'Category Management'
             },

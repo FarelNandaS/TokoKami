@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductImage;
 use App\Models\User;
@@ -93,6 +94,15 @@ class MainController extends Controller
 
         return Inertia::render('admin/stockManagement', [
             'data' => $data,
+        ]);
+    }
+
+    public function categoryManagement()
+    {
+        $categories = Category::all();
+
+        return Inertia::render('admin/categoryManagement', [
+            'data' => $categories
         ]);
     }
 
