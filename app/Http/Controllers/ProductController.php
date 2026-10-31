@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Attribute;
 use App\Models\AttributeValue;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -288,5 +289,34 @@ class ProductController extends Controller
 
             return back()->withErrors(['error' => $e->getMessage()]);
         }
+    }
+
+    public function adjustStock(Request $request, Product $product)
+    {
+        if ($product->variants()->count() > 0) {
+            $request->validate([
+                'variants' => 'required|array',
+                'variants.*.id' => 'required|exists:product_variants,id',
+                'variants.*.stock' => 'required|integer|min:0',
+            ]);
+
+            foreach ($request->variants as $variantData) {
+                ProductVariant::where('id', $variantData['id'])->update([
+                    'stock' => $variantData['stock'],
+                ]);
+            }
+        } else {
+            $request->validate([
+                'stock' => 'required|integer|min:0',
+            ]);
+
+            $product->update([
+                'stock' => $request->stock,
+            ]);
+        }
+
+        Inertia::flash('toast', ['type'=>'success', 'message'=>'Berhasil merubah stock product']);
+
+        return back();
     }
 }

@@ -25,6 +25,8 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
     //Stock management routes
     Route::middleware(['permission:Stock Management'])->group(function () {
         Route::get('stock-management', [MainController::class, 'stockManagement'])->name('stock-management');
+
+        Route::post('adjust-stock/{product}', [ProductController::class, 'adjustStock'])->name('adjust-stock');
     });
 
     ///Category management routes

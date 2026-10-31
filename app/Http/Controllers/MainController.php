@@ -88,13 +88,22 @@ class MainController extends Controller
 
     public function stockManagement()
     {
-        $products = Product::all();
+        $data = Product::with(['variants.attributeValues'])->get()->map(function ($product) {
+            $hasVariants = $product->variants->count() > 0;
 
-        $data = $products->map(function ($product) {
             return [
                 'id' => $product->id,
                 'name' => $product->name,
-                'stock' => $product->stock,
+                'has_variants' => $hasVariants,
+                'stock' => $hasVariants ? $product->variants->sum('stock') : ($product->stock ?? 0),
+                'variants' => $product->variants->map(function ($v) {
+                    return [
+                        'id' => $v->id,
+                        'sku' => $v->sku,
+                        'stock' => $v->stock,
+                        'combination' => $v->attributeValues->pluck('value')->join(' / '),
+                    ];
+                })
             ];
         });
 
