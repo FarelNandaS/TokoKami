@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BannerController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\MainController;
 use App\Http\Controllers\ProductController;
@@ -36,6 +37,15 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
         Route::post('create-category', [CategoryController::class, 'createCategory'])->name('create-category');
         Route::delete('delete-category', [CategoryController::class, 'deleteCategory'])->name('delete-category');
         Route::put('edit-category', [CategoryController::class, 'editCategory'])->name('edit-category');
+    });
+
+    //Banner Slider routes
+    Route::middleware(['permission:Banner Organize'])->group(function () {
+        Route::get('banner-slider', [MainController::class, 'bannerSlider'])->name('banner-slider');
+
+        Route::post('create-banner', [BannerController::class, 'createBanner'])->name('create-banner');
+        Route::delete('delete-banner', [BannerController::class, 'deleteBanner'])->name('delete-banner');
+        Route::post('edit-banner', [BannerController::class, 'editBanner'])->name('edit-banner');
     });
 
     //User / Admin management routes

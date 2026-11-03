@@ -12,7 +12,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { adminManagement, categoryManagement, dashboard, productManagement, stockManagement } from '@/routes';
+import { adminManagement, bannerSlider, categoryManagement, dashboard, productManagement, stockManagement } from '@/routes';
 import { typeNavGroups } from '@/types';
 
 const navGroups : typeNavGroups = [
@@ -54,7 +54,7 @@ const navGroups : typeNavGroups = [
         items: [
             {
                 title: 'Banner Slider',
-                href: '#',
+                href: bannerSlider(),
                 icon: Image,
                 permission: 'Banner Organize',
             },

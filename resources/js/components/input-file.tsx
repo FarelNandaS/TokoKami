@@ -1,4 +1,4 @@
-import { ChangeEvent, useRef, useState, useEffect } from "react";
+import React, { ChangeEvent, useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
     Attachment,
@@ -19,7 +19,7 @@ export interface ExistingFile {
     isImage: boolean;
 }
 
-interface FileUploadInputProps {
+interface FileUploadInputProps extends Omit<React.ComponentPropsWithRef<'input'>, 'value' | 'onChange'> {
     value: File[];
     onChange: (files: File[]) => void;
     initialFiles?: ExistingFile[];
@@ -47,6 +47,7 @@ export function InputFile({
     error,
     accept = "image/png, image/jpeg, image/jpg, image/webp, application/pdf",
     multiple = false, // Default-nya true (bisa banyak file)
+    ...props
 }: FileUploadInputProps) {
     const [previews, setPreviews] = useState<FilePreview[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -162,6 +163,7 @@ export function InputFile({
                 accept={accept}
                 onChange={handleFileChange}
                 className="hidden"
+                {...props}
             />
 
             <div

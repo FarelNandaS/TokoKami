@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Banner;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductImage;
@@ -118,6 +119,15 @@ class MainController extends Controller
 
         return Inertia::render('admin/categoryManagement', [
             'data' => $categories
+        ]);
+    }
+
+    public function bannerSlider()
+    {
+        $banners = Banner::all();
+
+        return Inertia::render('admin/bannerSlider', [
+            'data' => $banners
         ]);
     }
 

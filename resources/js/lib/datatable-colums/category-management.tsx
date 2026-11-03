@@ -140,7 +140,7 @@ function EditCategoryModal({ category }: { category: Category }) {
                     </Field>
                     <div className="flex justify-end">
                         <Button className="cursor-pointer" type="submit">
-                            {processing ? "Saving..." : "Create"}
+                            {processing ? "Saving..." : "Save"}
                         </Button>
                     </div>
                 </FieldGroup>
