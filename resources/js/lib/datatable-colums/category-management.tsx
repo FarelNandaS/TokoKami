@@ -35,7 +35,13 @@ function EditCategoryModal({ category }: { category: Category }) {
     const handleOpenChange = (open: boolean) => {
         setIsOpen(open);
 
-        if (!open) {
+        if (open) {
+            setData({
+                id: category.id,
+                name: category.name,
+                slug: category.slug,
+            });
+        } else {
             reset();
             clearErrors();
         }
