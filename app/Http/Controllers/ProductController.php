@@ -132,6 +132,14 @@ class ProductController extends Controller
         $product = Product::findOrFail($request->id);
         $name = $product->name;
 
+        $images = $product->images;
+
+        foreach ($images as $image) {
+            if (Storage::disk('public')->exists($image->image_path)) {
+                Storage::disk('public')->delete($image->image_path);
+            }
+        }
+
         $product->delete();
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Berhasi menghapus product dengan nama: ' . $name]);
