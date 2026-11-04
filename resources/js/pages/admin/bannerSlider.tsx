@@ -28,6 +28,7 @@ export default function BannerSlider({ data }: { data: Banner[] }) {
         title: "",
         subtitle: "",
         link_url: "",
+        btn_text: "",
         order: 0,
         is_active: true,
     });
@@ -51,11 +52,11 @@ export default function BannerSlider({ data }: { data: Banner[] }) {
                 setIsOpen(false);
             },
             onError: (error) => {
-                console.error('Gagal membuat banner baru: ', error);
-                toast.error('Gagal membuat banner baru!');
-            }
-        })
-    }
+                console.error("Gagal membuat banner baru: ", error);
+                toast.error("Gagal membuat banner baru!");
+            },
+        });
+    };
 
     return (
         <>
@@ -172,22 +173,54 @@ export default function BannerSlider({ data }: { data: Banner[] }) {
                                             </span>
                                         )}
                                     </Field>
+                                    <Field className="gap-2">
+                                        <FieldLabel htmlFor="btn_text">
+                                            Button Text
+                                        </FieldLabel>
+                                        <Input
+                                            id="btn_text"
+                                            value={formData.btn_text}
+                                            onChange={(e) =>
+                                                setData(
+                                                    "btn_text",
+                                                    e.target.value,
+                                                )
+                                            }
+                                            placeholder="Cth: Belanja Sekarang"
+                                            aria-invalid={
+                                                errors.btn_text ? true : false
+                                            }
+                                        />
+                                        {errors.btn_text && (
+                                            <span className="text-xs text-destructive">
+                                                {errors.btn_text}
+                                            </span>
+                                        )}
+                                    </Field>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start pt-1">
                                         <Field className="gap-2">
-                                            <FieldLabel htmlFor="order">Sort Order</FieldLabel>
+                                            <FieldLabel htmlFor="order">
+                                                Sort Order
+                                            </FieldLabel>
                                             <Input
                                                 id="order"
                                                 type="number"
                                                 min="0"
                                                 value={formData.order}
                                                 onChange={(e) =>
-                                                    setData("order", Number(e.target.value))
+                                                    setData(
+                                                        "order",
+                                                        Number(e.target.value),
+                                                    )
                                                 }
                                                 placeholder="0"
-                                                aria-invalid={errors.order ? true : false}
+                                                aria-invalid={
+                                                    errors.order ? true : false
+                                                }
                                             />
                                             <span className="text-[11px] text-muted-foreground">
-                                                Angka kecil akan tampil lebih awal.
+                                                Angka kecil akan tampil lebih
+                                                awal.
                                             </span>
                                             {errors.order && (
                                                 <span className="text-xs text-destructive">
@@ -197,11 +230,15 @@ export default function BannerSlider({ data }: { data: Banner[] }) {
                                         </Field>
 
                                         <Field className="gap-2">
-                                            <FieldLabel htmlFor="is_active">Publish Status</FieldLabel>
+                                            <FieldLabel htmlFor="is_active">
+                                                Publish Status
+                                            </FieldLabel>
                                             <div className="flex items-center justify-between rounded-lg border p-2.5 shadow-sm bg-muted/20">
                                                 <div className="flex flex-col gap-0.5">
                                                     <span className="text-xs font-medium">
-                                                        {formData.is_active ? "Active" : "Draft / Inactive"}
+                                                        {formData.is_active
+                                                            ? "Active"
+                                                            : "Draft / Inactive"}
                                                     </span>
                                                     <span className="text-[11px] text-muted-foreground">
                                                         {formData.is_active
@@ -212,8 +249,13 @@ export default function BannerSlider({ data }: { data: Banner[] }) {
                                                 <Switch
                                                     id="is_active"
                                                     checked={formData.is_active}
-                                                    onCheckedChange={(checked) =>
-                                                        setData("is_active", checked)
+                                                    onCheckedChange={(
+                                                        checked,
+                                                    ) =>
+                                                        setData(
+                                                            "is_active",
+                                                            checked,
+                                                        )
                                                     }
                                                 />
                                             </div>

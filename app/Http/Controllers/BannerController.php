@@ -16,7 +16,8 @@ class BannerController extends Controller
             'banner.*' => 'image|mimes:png,jpg,jpeg,webp|max:2048',
             'title' => 'nullable|string',
             'subtitle' => 'nullable|string',
-            'link_url' => 'nullable|string',
+            'link_url' => 'nullable|required_with:btn_text|url',
+            'btn_text' => 'nullable|string|max:50',
             'order' => 'nullable|numeric',
             'is_active' => 'nullable|boolean', 
         ]);
@@ -29,6 +30,7 @@ class BannerController extends Controller
                 'title' => $request->title,
                 'subtitle' => $request->subtitle,
                 'link_url' => $request->link_url,
+                'btn_text' => $request->btn_text,
                 'order' => $request->order,
                 'is_active' => $request->is_active,
             ]);
@@ -71,7 +73,8 @@ class BannerController extends Controller
             'banner.*' => 'nullable|image|mimes:png,jpg,jpeg,webp|max:2048',
             'title' => 'nullable|string',
             'subtitle' => 'nullable|string',
-            'link_url' => 'nullable|string',
+            'link_url' => 'nullable|required_with:btn_text|url',
+            'btn_text' => 'nullable|string|max:50',
             'order' => 'nullable|numeric',
             'is_active' => 'nullable|boolean',
         ]);
@@ -94,6 +97,7 @@ class BannerController extends Controller
         $banner->title = $request->title;
         $banner->subtitle = $request->subtitle;
         $banner->link_url = $request->link_url;
+        $banner->btn_text = $request->btn_text;
         $banner->order = $request->order;
         $banner->is_active = $request->is_active;
         $banner->save();

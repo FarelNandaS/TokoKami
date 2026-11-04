@@ -25,6 +25,7 @@ export type Banner = {
     title: string;
     subtitle: string;
     link_url: string;
+    btn_text: string;
     order: number;
     is_active: boolean;
 };
@@ -40,6 +41,7 @@ function EditBannerModal({ banner }: { banner: Banner }) {
             title: banner.title,
             subtitle: banner.subtitle,
             link_url: banner.link_url,
+            btn_text: banner.btn_text,
             order: banner.order,
             is_active: banner.is_active,
         });
@@ -55,6 +57,7 @@ function EditBannerModal({ banner }: { banner: Banner }) {
                 title: banner.title,
                 subtitle: banner.subtitle,
                 link_url: banner.link_url,
+                btn_text: banner.btn_text,
                 order: banner.order,
                 is_active: banner.is_active,
             });
@@ -175,6 +178,23 @@ function EditBannerModal({ banner }: { banner: Banner }) {
                         {errors.link_url && (
                             <span className="text-xs text-destructive">
                                 {errors.link_url}
+                            </span>
+                        )}
+                    </Field>
+                    <Field className="gap-2">
+                        <FieldLabel htmlFor="btn_text">Button Text</FieldLabel>
+                        <Input
+                            id="btn_text"
+                            value={data.btn_text}
+                            onChange={(e) =>
+                                setData("btn_text", e.target.value)
+                            }
+                            placeholder="Cth: Belanja Sekarang"
+                            aria-invalid={errors.btn_text ? true : false}
+                        />
+                        {errors.btn_text && (
+                            <span className="text-xs text-destructive">
+                                {errors.btn_text}
                             </span>
                         )}
                     </Field>
@@ -317,6 +337,19 @@ export const columns = columnHelper.columns([
                 >
                     {link}
                 </a>
+            ) : (
+                <span className="text-muted-foreground">-</span>
+            );
+        },
+    }),
+    columnHelper.accessor("btn_text", {
+        header: "Button Text",
+        cell: ({ row }) => {
+            const btnText = row.original.btn_text;
+            return btnText ? (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary border border-primary/20 truncate max-w-[120px]" title={btnText}>
+                    {btnText}
+                </span>
             ) : (
                 <span className="text-muted-foreground">-</span>
             );
