@@ -17,7 +17,37 @@ class MainController extends Controller
     // Controller Guest
     public function home()
     {
-        return Inertia::render('home');
+        // Ambil banner yang aktif, urutkan berdasarkan order dan tanggal dibuat
+    $banners = Banner::where('is_active', true)
+        ->orderBy('order', 'asc')
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+    // Ambil produk beserta gambar utamanya (cover_image)
+    $products = Product::with(['images' => function($query) {
+        $query->where('is_primary', true);
+    }])->latest()->paginate(8);
+
+    // Format struktur produk agar sesuai dengan yang dibaca oleh frontend home.tsx
+    $formattedProducts = collect($products->items())->map(function ($product) {
+        $coverImage = $product->images->first();
+        $category = $product->categories;
+        
+        return [
+            'id' => $product->id,
+            'name' => $product->name,
+            'description' => $product->description,
+            'price' => $product->price,
+            'image' => $coverImage ? '/storage/' . $coverImage->image_path : '/images/placeholder.jpg',
+            'originalPrice' => null,
+            'category' => $category,
+        ];
+    });
+
+    return Inertia::render('home', [
+        'banners' => $banners,
+        'products' => $formattedProducts,
+    ]);
     }
 
     // Controller Admin 
