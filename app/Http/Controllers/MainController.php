@@ -18,36 +18,108 @@ class MainController extends Controller
     public function home()
     {
         // Ambil banner yang aktif, urutkan berdasarkan order dan tanggal dibuat
-    $banners = Banner::where('is_active', true)
-        ->orderBy('order', 'asc')
-        ->orderBy('created_at', 'desc')
-        ->get();
+        $banners = Banner::where('is_active', true)
+            ->orderBy('order', 'asc')
+            ->orderBy('created_at', 'desc')
+            ->get();
 
-    // Ambil produk beserta gambar utamanya (cover_image)
-    $products = Product::with(['images' => function($query) {
-        $query->where('is_primary', true);
-    }])->latest()->paginate(8);
+        // Ambil produk beserta gambar utamanya (cover_image)
+        $products = Product::with([
+            'images' => function ($query) {
+                $query->where('is_primary', true);
+            }
+        ])->latest()->paginate(8);
 
-    // Format struktur produk agar sesuai dengan yang dibaca oleh frontend home.tsx
-    $formattedProducts = collect($products->items())->map(function ($product) {
-        $coverImage = $product->images->first();
-        $category = $product->categories;
-        
-        return [
+        // Format struktur produk agar sesuai dengan yang dibaca oleh frontend home.tsx
+        $formattedProducts = collect($products->items())->map(function ($product) {
+            $coverImage = $product->images->first();
+            $category = $product->categories;
+
+            return [
+                'id' => $product->id,
+                'name' => $product->name,
+                'description' => $product->description,
+                'price' => $product->price,
+                'image' => $coverImage ? '/storage/' . $coverImage->image_path : '/images/placeholder.jpg',
+                'originalPrice' => null,
+                'category' => $category,
+            ];
+        });
+
+        return Inertia::render('home', [
+            'banners' => $banners,
+            'products' => $formattedProducts,
+        ]);
+    }
+
+    public function product($id)
+    {
+        // Ambil produk beserta gambar dan varian atributnya
+        $product = Product::with(['images', 'categories', 'variants.attributeValues.attribute'])->findOrFail($id);
+
+        $coverImage = $product->images->where('is_primary', true)->first();
+        $otherImages = $product->images->where('is_primary', false)->values();
+
+        // Format kumpulan gambar produk
+        $allImages = [];
+        if ($coverImage) {
+            $allImages[] = ['id' => $coverImage->id, 'url' => '/storage/' . $coverImage->image_path];
+        }
+        foreach ($otherImages as $img) {
+            $allImages[] = ['id' => $img->id, 'url' => '/storage/' . $img->image_path];
+        }
+        if (empty($allImages)) {
+            $allImages[] = ['id' => 0, 'url' => '/images/placeholder.jpg'];
+        }
+
+        $categoryName = $product->categories->first()->name ?? 'Umum';
+
+        // Format varian atribut (Cth: Warna, Ukuran) dari database
+        $variants = $product->variants;
+        $attributesMap = [];
+        foreach ($variants as $variant) {
+            foreach ($variant->attributeValues as $attrVal) {
+                $attrName = $attrVal->attribute->name ?? 'Varian';
+                $valText = $attrVal->value ?? '';
+                if (!isset($attributesMap[$attrName])) {
+                    $attributesMap[$attrName] = [];
+                }
+                if (!in_array($valText, $attributesMap[$attrName])) {
+                    $attributesMap[$attrName][] = $valText;
+                }
+            }
+        }
+
+        $formattedAttributes = [];
+        foreach ($attributesMap as $name => $options) {
+            $formattedAttributes[] = [
+                'name' => $name,
+                'options' => $options,
+            ];
+        }
+
+        // Hitung total stok dari varian atau stok produk utama
+        $totalStock = $variants->count() > 0 ? $variants->sum('stock') : ($product->stock ?? 0);
+
+        $formattedProduct = [
             'id' => $product->id,
             'name' => $product->name,
             'description' => $product->description,
             'price' => $product->price,
-            'image' => $coverImage ? '/storage/' . $coverImage->image_path : '/images/placeholder.jpg',
-            'originalPrice' => null,
-            'category' => $category,
+            'originalPrice' => null, // Bisa diisi jika ada kolom diskon/harga coret
+            'discountPercentage' => 0,
+            'rating' => 4.8, // Dummy karena fitur review belum dibuat
+            'reviewsCount' => 15, // Dummy ulasan
+            'stock' => $totalStock,
+            'category' => $categoryName,
+            'tags' => ['Produk Pilihan', 'Terlaris'],
+            'images' => $allImages,
+            'attributes' => $formattedAttributes,
         ];
-    });
 
-    return Inertia::render('home', [
-        'banners' => $banners,
-        'products' => $formattedProducts,
-    ]);
+        return Inertia::render('product', [
+            'product' => $formattedProduct
+        ]);
     }
 
     // Controller Admin 
