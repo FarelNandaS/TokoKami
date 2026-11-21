@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 #[Fillable(['product_id', 'sku', 'price', 'stock'])]
 class ProductVariant extends Model
 {
@@ -17,5 +18,10 @@ class ProductVariant extends Model
     public function attributeValues(): BelongsToMany
     {
         return $this->belongsToMany(AttributeValue::class, 'product_variant_values');
+    }
+
+    public function sale(): HasOne
+    {
+        return $this->hasOne(ProductSale::class);
     }
 }

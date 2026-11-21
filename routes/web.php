@@ -4,6 +4,7 @@ use App\Http\Controllers\BannerController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\MainController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\SaleController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -47,6 +48,14 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
         Route::post('create-banner', [BannerController::class, 'createBanner'])->name('create-banner');
         Route::delete('delete-banner', [BannerController::class, 'deleteBanner'])->name('delete-banner');
         Route::post('edit-banner', [BannerController::class, 'editBanner'])->name('edit-banner');
+    });
+
+    //Sale Management routes
+    Route::middleware(['permission:Sale Management'])->group(function () {
+        Route::get('sale-management', [MainController::class, 'saleManagement'])->name('sale-management');
+
+        Route::post('create-sale', [SaleController::class, 'createSale'])->name('create-sale');
+        Route::delete('delete-sale', [SaleController::class, 'deleteSale'])->name('delete-sale');
     });
 
     //User / Admin management routes

@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { Boxes, Image, LayoutGrid, Package, Tags, Users, Zap } from 'lucide-react';
+import { BadgePercent, Boxes, Image, LayoutGrid, Package, Tags, Users, Zap } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -12,7 +12,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { adminManagement, bannerSlider, categoryManagement, dashboard, home, productManagement, stockManagement } from '@/routes';
+import { adminManagement, bannerSlider, categoryManagement, dashboard, home, productManagement, saleManagement, stockManagement } from '@/routes';
 import { typeNavGroups } from '@/types';
 
 const navGroups : typeNavGroups = [
@@ -59,9 +59,9 @@ const navGroups : typeNavGroups = [
                 permission: 'Banner Organize',
             },
             {
-                title: 'Flash Sale',
-                href: '#',
-                icon: Zap,
+                title: 'Promosi Produk',
+                href: saleManagement(),
+                icon: BadgePercent,
                 permission: 'Sale Management'
             },
         ],

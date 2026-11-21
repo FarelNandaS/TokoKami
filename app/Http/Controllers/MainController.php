@@ -6,6 +6,7 @@ use App\Models\Banner;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductImage;
+use App\Models\ProductSale;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -230,6 +231,18 @@ class MainController extends Controller
 
         return Inertia::render('admin/bannerSlider', [
             'data' => $banners
+        ]);
+    }
+
+    public function saleManagement()
+    {
+        $saleProducts = ProductSale::with(['product', 'variant.attributeValues.attribute'])->latest()->get();
+    
+        $products = Product::with(['variants.attributeValues.attribute'])->orderBy('name')->get();
+
+        return Inertia::render('admin/saleManagement', [
+            'saleProducts' => $saleProducts,
+            'products' => $products,
         ]);
     }
 

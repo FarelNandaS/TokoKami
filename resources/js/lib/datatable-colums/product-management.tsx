@@ -35,7 +35,7 @@ type attributeValue = {
     value: string;
 };
 
-type productVariant = {
+export type productVariant = {
     id: number;
     sku: string;
     price: number;
@@ -48,11 +48,11 @@ export type product = {
     name: string;
     description: string;
     price: number;
-    cover_image: productImages;
-    images: productImages[];
-    variants: productVariant[];
-    attributes: AttributeCard[];
-    category_ids: number[];
+    cover_image?: productImages;
+    images?: productImages[];
+    variants?: productVariant[];
+    attributes?: AttributeCard[];
+    category_ids?: number[];
 };
 
 function EditProductModal({
