@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import { 
   Search, 
@@ -28,6 +28,17 @@ interface ProductVariantAttribute {
   options: string[];
 }
 
+interface ProductVariantItem {
+  id: number;
+  sku?: string | null;
+  stock: number;
+  attributes: { [key: string]: string};
+  price: number;
+  originalPrice: number;
+  discountPercentage?: number;
+  isOnSale?: boolean;
+}
+
 interface ProductProps {
   product: {
     id: number;
@@ -43,6 +54,7 @@ interface ProductProps {
     tags: string[];
     images: ProductImage[];
     attributes: ProductVariantAttribute[];
+    variants: ProductVariantItem[];
   };
 }
 
@@ -60,10 +72,42 @@ export default function Product({ product }: ProductProps) {
     });
     return initial;
   });
+  
+    const matchedVariant = useMemo(() => {
+      if (!product.variants || product.variants.length === 0) return null;
+  
+      return (
+        product.variants.find((variant) => 
+          Object.entries(variant.attributes || {}).every(
+            ([attrName, attrVal]) => selectedOptions[attrName] === attrVal,
+          ),
+        ) ?? null
+      );
+    }, [product.variants, selectedOptions]);
+  
+    const activePrice = matchedVariant ? matchedVariant.price : product.price;
+  
+    const activeOriginalPrice = matchedVariant
+      ? matchedVariant.originalPrice
+      : product.originalPrice;
+  
+    const activeDiscountPercentage = matchedVariant
+      ? matchedVariant.discountPercentage
+      : product.discountPercentage;
+  
+    const activeStock = matchedVariant ? matchedVariant.stock : product.stock;
+  
+    useEffect(() => {
+      if (activeStock > 0 && quantity > activeStock) {
+        setQuantity(activeStock);
+      } else if (activeStock === 0) {
+        setQuantity(1);
+      }
+    }, [activeStock, quantity]);
 
   const handleQuantityChange = (type: 'increment' | 'decrement') => {
     if (type === 'increment') {
-      if (quantity < product.stock) setQuantity(prev => prev + 1);
+      if (quantity < activeStock) setQuantity(prev => prev + 1);
     } else {
       if (quantity > 1) setQuantity(prev => prev - 1);
     }
@@ -138,9 +182,9 @@ export default function Product({ product }: ProductProps) {
                   alt={product.name} 
                   className="w-full h-full object-cover transition-all duration-300"
                 />
-                {product.discountPercentage ? (
+                {activeDiscountPercentage ? (
                   <Badge className="absolute top-4 left-4 bg-destructive text-destructive-foreground font-black text-xs px-3 py-1 rounded-full shadow">
-                    -{product.discountPercentage}% OFF
+                    -{activeDiscountPercentage}% OFF
                   </Badge>
                 ) : null}
               </div>
@@ -187,19 +231,19 @@ export default function Product({ product }: ProductProps) {
                     ({product.reviewsCount} Ulasan)
                   </span>
                   <span className="text-muted-foreground">•</span>
-                  <span className={`text-sm font-medium ${product.stock > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`}>
-                    {product.stock > 0 ? `Stok Tersedia (${product.stock})` : 'Stok Habis'}
+                  <span className={`text-sm font-medium ${activeStock > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`}>
+                    {activeStock > 0 ? `Stok Tersedia (${activeStock})` : 'Stok Habis'}
                   </span>
                 </div>
               </div>
 
               <div className="py-4 space-y-1">
                 <div className="text-3xl font-extrabold text-primary">
-                  {formatRupiah(product.price)}
+                  {formatRupiah(activePrice)}
                 </div>
-                {product.originalPrice && (
+                {activeOriginalPrice && (
                   <div className="text-sm text-muted-foreground line-through">
-                    {formatRupiah(product.originalPrice)}
+                    {formatRupiah(activeOriginalPrice)}
                   </div>
                 )}
               </div>

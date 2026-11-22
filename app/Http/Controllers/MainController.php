@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\ProductImage;
 use App\Models\ProductSale;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -24,6 +25,19 @@ class MainController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
+        // Ambil semua sale yang sedang aktif
+        $now = Carbon::now();
+
+        $activeSales = ProductSale::with('variant')
+            ->where(function ($q) use ($now) {
+                $q->where('start_sale', '<=', $now);
+            })
+            ->where(function ($q) use ($now) {
+                $q->where('end_sale', '>=', $now);
+            })
+            ->get()
+            ->groupBy('product_id');
+
         // Ambil produk beserta gambar utamanya (cover_image)
         $products = Product::with([
             'images' => function ($query) {
@@ -32,32 +46,120 @@ class MainController extends Controller
         ])->latest()->paginate(8);
 
         // Format struktur produk agar sesuai dengan yang dibaca oleh frontend home.tsx
-        $formattedProducts = collect($products->items())->map(function ($product) {
+        $formattedProducts = collect($products->items())->map(function ($product) use ($activeSales) {
             $coverImage = $product->images->first();
             $category = $product->categories;
+            $salesForProduct = $activeSales->get($product->id, collect());
+
+            $displayPrice = (int) $product->price;
+            $originalPrice = null;
+            $discountPercentage = null;
+            $isOnSale = false;
+
+            if ($salesForProduct->isNotEmpty()) {
+                $bestSale = $salesForProduct
+                    ->map(function ($sale) use ($product) {
+                        $normalPrice = (int) ($sale->variant?->price ?? $product->price);
+                        $salePrice = (int) $sale->sale_price;
+
+                        $percent = $sale->discount_percentage === null
+                            ? (int) round((float) $sale->discount_percentage)
+                            : ($normalPrice > 0 && $salePrice < $normalPrice
+                                ? (int) round((($normalPrice - $salePrice) / $normalPrice) * 100)
+                                : 0);
+
+                        return [
+                            'sale' => $sale,
+                            'normal_price' => $normalPrice,
+                            'sale_price' => $salePrice,
+                            'percent' => $percent,
+                        ];
+                    })
+                    ->filter(fn ($item) => $item['sale_price'] < $item['normal_price'])
+                    ->sortBy('sale_price')
+                    ->first();
+
+                if ($bestSale) {
+                    $isOnSale = true;
+                    $displayPrice = $bestSale['sale_price'];
+                    $originalPrice = $bestSale['normal_price'];
+                    $discountPercentage = $bestSale['percent'] > 0 ? $bestSale['percent'] : null;
+                }
+            }
 
             return [
                 'id' => $product->id,
                 'name' => $product->name,
                 'description' => $product->description,
-                'price' => $product->price,
+                'price' => $displayPrice,
                 'image' => $coverImage ? '/storage/' . $coverImage->image_path : '/images/placeholder.jpg',
-                'originalPrice' => null,
+                'originalPrice' => $originalPrice,
+                'discountPercentage' => $discountPercentage,
+                'isOnSale' => $isOnSale,
                 'category' => $category,
             ];
         });
 
+        $promoProducts = $formattedProducts->where('isOnSale', true)->values();
+
         return Inertia::render('home', [
             'banners' => $banners,
             'products' => $formattedProducts,
+            'promoProducts' => $promoProducts,
         ]);
     }
 
-    public function product($id)
+    public function productDetail($id)
     {
         // Ambil produk beserta gambar dan varian atributnya
         $product = Product::with(['images', 'categories', 'variants.attributeValues.attribute'])->findOrFail($id);
 
+        // Ambil sale yang aktif
+        $now = Carbon::now();
+
+        $activeSale = ProductSale::where('product_id', $product->id)
+            ->where(function ($q) use ($now) {
+                $q->where('start_sale', '<=', $now);
+            })
+            ->where(function ($q) use ($now) {
+                $q->where('end_sale', '>=', $now);
+            })
+            ->get();
+
+        // Sale untuk product utama (tanpa variant)
+        $productLavelSale = $activeSale->firstWhere('product_variant_id', null);
+
+        // Sale per variant (key: product_variant_id)
+        $variantSaleMap = $activeSale
+            ->whereNotNull('product_variant_id')
+            ->keyBy('product_variant_id');
+
+        $helperSaleInfo = function (int $normalPrice, ?ProductSale $sale): array {
+            if ($sale && (int) $sale->sale_price < $normalPrice) {
+                $salePrice = (int) $sale->sale_price;
+                $percent = $sale->discount_percentage !== null
+                    ? (int) round((float) $sale->discount_percentage)
+                    : ($normalPrice > 0
+                        ? (int) round((($normalPrice - $salePrice) / $normalPrice) * 100)
+                        : 0);
+
+                return [
+                    'price' => $salePrice,
+                    'originalPrice' => $normalPrice,
+                    'discountPercentage' => max(0, $percent),
+                    'isOnSale' => true,
+                ];
+            }
+
+            return [
+                'price' => $normalPrice,
+                'originalPrice' => null,
+                'discountPercentage' => 0,
+                'isOnSale' => false,
+            ];
+        };
+
+        // Mengambil semua gambar product
         $coverImage = $product->images->where('is_primary', true)->first();
         $otherImages = $product->images->where('is_primary', false)->values();
 
@@ -78,17 +180,41 @@ class MainController extends Controller
         // Format varian atribut (Cth: Warna, Ukuran) dari database
         $variants = $product->variants;
         $attributesMap = [];
+        $formattedVariants = [];
+
         foreach ($variants as $variant) {
+            $attrSelection = [];
             foreach ($variant->attributeValues as $attrVal) {
                 $attrName = $attrVal->attribute->name ?? 'Varian';
                 $valText = $attrVal->value ?? '';
+
+                if ($attrName !== '' && $valText !== '') {
+                    $attrSelection[$attrName] = $valText;
+                }
+
                 if (!isset($attributesMap[$attrName])) {
                     $attributesMap[$attrName] = [];
                 }
+
                 if (!in_array($valText, $attributesMap[$attrName])) {
                     $attributesMap[$attrName][] = $valText;
                 }
             }
+
+            $normalVariantPrice = (int) ($variant->price ?? $product->price);
+            $variantSale = $variantSaleMap->get($variant->id) ?? $productLavelSale;
+            $saleInfo = $helperSaleInfo($normalVariantPrice, $variantSale);
+
+            $formattedVariants[] = [
+                'id' => $variant->id,
+                'sku' => $variant->sku,
+                'stock' => (int) ($variant->stock ?? 0),
+                'attributes' => $attrSelection,
+                'price' => $saleInfo['price'],
+                'originalPrice' => $saleInfo['originalPrice'],
+                'discountPercentage' => $saleInfo['discountPercentage'],
+                'isOnSale' => $saleInfo['isOnSale'],
+            ];
         }
 
         $formattedAttributes = [];
@@ -99,23 +225,37 @@ class MainController extends Controller
             ];
         }
 
-        // Hitung total stok dari varian atau stok produk utama
-        $totalStock = $variants->count() > 0 ? $variants->sum('stock') : ($product->stock ?? 0);
+        $hasVariants = count($formattedVariants) > 0;
+        $totalStock = $hasVariants
+            ? collect($formattedVariants)->sum('stock')
+            : (int) ($product->stock ?? 0);
+
+        // Harga default sebelum ganti-ganti varian: pakai varian pertama jika ada, atau produk utama
+        if ($hasVariants) {
+            $defaultInfo = [
+                'price' => $formattedVariants[0]['price'],
+                'originalPrice' => $formattedVariants[0]['originalPrice'],
+                'discountPercentage' => $formattedVariants[0]['discountPercentage']
+            ];
+        } else {
+            $defaultInfo = $helperSaleInfo((int) $product->price, $productLavelSale);
+        }
 
         $formattedProduct = [
             'id' => $product->id,
             'name' => $product->name,
             'description' => $product->description,
-            'price' => $product->price,
-            'originalPrice' => null, // Bisa diisi jika ada kolom diskon/harga coret
-            'discountPercentage' => 0,
-            'rating' => 4.8, // Dummy karena fitur review belum dibuat
-            'reviewsCount' => 15, // Dummy ulasan
+            'price' => $defaultInfo['price'],
+            'originalPrice' => $defaultInfo['originalPrice'],
+            'discountPercentage' => $defaultInfo['discountPercentage'],
+            'rating' => 4.8,
+            'reviewsCount' => 15,
             'stock' => $totalStock,
             'category' => $categoryName,
             'tags' => ['Produk Pilihan', 'Terlaris'],
             'images' => $allImages,
             'attributes' => $formattedAttributes,
+            'variants' => $formattedVariants,
         ];
 
         return Inertia::render('product', [

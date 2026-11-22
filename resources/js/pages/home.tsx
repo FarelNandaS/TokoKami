@@ -23,12 +23,13 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Banner } from "@/lib/datatable-colums/banner-slider";
+import { productDetail } from "@/routes";
 
 // ==================== INTERFACES (Untuk Props CMS) ====================
 interface Category {
-  id: number;
-  name: string;
-  slug: string;
+    id: number;
+    name: string;
+    slug: string;
 }
 
 interface ProductItem {
@@ -38,37 +39,21 @@ interface ProductItem {
     price: number;
     image: string;
     originalPrice?: number | null;
+    discountPercentage?: number | null;
+    isOnSale?: boolean;
     category: Category[];
-}
-
-interface FlashSaleItem {
-    id: number;
-    name: string;
-    price: number;
-    originalPrice: number;
-    discountPercentage: number;
-    soldCount: number;
-    stockCount: number;
-    image: string;
-}
-
-interface FlashSaleConfig {
-    title: string;
-    subtitle: string;
-    endTime: string;
-    items: FlashSaleItem[];
 }
 
 interface HomeProps {
     banners?: Banner[];
-    flashSale?: FlashSaleConfig;
     products?: ProductItem[];
+    promoProducts?: ProductItem[];
 }
 
 export default function StorefrontHome({
     banners,
-    flashSale,
     products,
+    promoProducts,
 }: HomeProps) {
     const [cartCount, setCartCount] = useState(2);
 
@@ -83,43 +68,6 @@ export default function StorefrontHome({
             setSelectedIndex(emblaApi.selectedScrollSnap());
         });
     }, [emblaApi]);
-
-    const [timeLeft, setTimeLeft] = useState({
-        hours: "00",
-        minutes: "00",
-        seconds: "00",
-    });
-
-    useEffect(() => {
-        if (!flashSale?.endTime) return;
-
-        const interval = setInterval(() => {
-            const now = new Date().getTime();
-            const distance = new Date(flashSale.endTime).getTime() - now;
-
-            if (distance < 0) {
-                clearInterval(interval);
-                setTimeLeft({ hours: "00", minutes: "00", seconds: "00" });
-                return;
-            }
-
-            const hours = Math.floor(
-                (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
-            );
-            const minutes = Math.floor(
-                (distance % (1000 * 60 * 60)) / (1000 * 60),
-            );
-            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-            setTimeLeft({
-                hours: hours < 10 ? `0${hours}` : `${hours}`,
-                minutes: minutes < 10 ? `0${minutes}` : `${minutes}`,
-                seconds: seconds < 10 ? `0${seconds}` : `${seconds}`,
-            });
-        }, 1000);
-
-        return () => clearInterval(interval);
-    }, [flashSale]);
 
     const formatRupiah = (amount: number) => {
         return new Intl.NumberFormat("id-ID", {
@@ -254,9 +202,8 @@ export default function StorefrontHome({
                                                                     size="lg"
                                                                     className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 font-bold px-8 shadow-lg shadow-primary/25"
                                                                 >
-                                                                    {
-                                                                        banner.btn_text ?? "Cek Sekarang"
-                                                                    }{" "}
+                                                                    {banner.btn_text ??
+                                                                        "Cek Sekarang"}{" "}
                                                                     <ChevronRight className="ml-2 h-4 w-4" />
                                                                 </Button>
                                                             </Link>
@@ -321,112 +268,94 @@ export default function StorefrontHome({
                     </div>
                 </section>
 
-                {/* ==================== FLASH SALE SECTION (Opsional) ==================== */}
-                {flashSale && flashSale.items.length > 0 && (
+                {/* ==================== PROMO / SALE SECTION ==================== */}
+                {promoProducts && promoProducts.length > 0 && (
                     <section className="py-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
-                        <div className="bg-gradient-to-r from-emerald-950 via-zinc-900 to-zinc-950 border border-primary/30 rounded-3xl p-6 sm:p-8 text-white shadow-xl">
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2.5 bg-primary text-primary-foreground rounded-2xl animate-pulse">
-                                        <Zap className="h-6 w-6 fill-primary-foreground" />
-                                    </div>
-                                    <div>
-                                        <h2 className="text-2xl font-black tracking-tight uppercase">
-                                            {flashSale.title}
-                                        </h2>
-                                        <p className="text-xs text-zinc-400">
-                                            {flashSale.subtitle}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center gap-2 text-xs font-bold bg-zinc-900/90 border border-zinc-800 px-3.5 py-2 rounded-2xl">
-                                    <Clock className="h-4 w-4 text-primary" />
-                                    <span className="text-zinc-400">
-                                        Berakhir dalam:
-                                    </span>
-                                    <div className="flex items-center gap-1">
-                                        <span className="bg-primary text-primary-foreground px-2 py-1 rounded-md font-extrabold">
-                                            {timeLeft.hours}
-                                        </span>{" "}
-                                        :
-                                        <span className="bg-primary text-primary-foreground px-2 py-1 rounded-md font-extrabold">
-                                            {timeLeft.minutes}
-                                        </span>{" "}
-                                        :
-                                        <span className="bg-primary text-primary-foreground px-2 py-1 rounded-md font-extrabold">
-                                            {timeLeft.seconds}
-                                        </span>
-                                    </div>
-                                </div>
+                        <div className="flex items-center justify-between mb-6">
+                            <div>
+                                <h2 className="text-2xl font-bold tracking-tight">
+                                    Produk Lagi Promo
+                                </h2>
+                                <p className="text-sm text-muted-foreground">
+                                    Penawaran spesial & potongan harga yang
+                                    sedang berlangsung.
+                                </p>
                             </div>
+                            <Link
+                                href="/promo"
+                                className="text-sm font-semibold text-primary hover:underline hidden sm:flex items-center gap-1"
+                            >
+                                Lihat Semua <ChevronRight className="h-4 w-4" />
+                            </Link>
+                        </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                                {flashSale.items.map((item) => {
-                                    const percentageSold = Math.round(
-                                        (item.soldCount / item.stockCount) *
-                                            100,
-                                    );
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                            {promoProducts.map((product) => (
+                                <Link href={productDetail(product.id).url}>
+                                    <Card
+                                        key={`promo-${product.id}`}
+                                        className="group overflow-hidden rounded-2xl border-border bg-card shadow-sm hover:shadow-md transition-all duration-300 flex flex-col gap-0 p-0"
+                                    >
+                                        <div className="relative aspect-square overflow-hidden bg-muted">
+                                            <img
+                                                src={product.image}
+                                                alt={product.name}
+                                                className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
+                                            />
+                                            <Badge className="absolute top-3 left-3 bg-destructive text-destructive-foreground font-bold text-[11px] px-2 py-0.5 rounded-full shadow-sm">
+                                                {product.discountPercentage
+                                                    ? `-${product.discountPercentage}%`
+                                                    : product.originalPrice
+                                                    ? `Hemat ${formatRupiah(product.originalPrice - product.price)}`
+                                                    : "SALE"}
+                                            </Badge>
+                                        </div>
 
-                                    return (
-                                        <Card
-                                            key={item.id}
-                                            className="bg-zinc-900/90 border-zinc-800 overflow-hidden group hover:border-primary/50 transition-all"
-                                        >
-                                            <div className="relative aspect-square overflow-hidden bg-zinc-800">
-                                                <img
-                                                    src={item.image}
-                                                    alt={item.name}
-                                                    className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
-                                                />
-                                                <Badge className="absolute top-2 left-2 bg-destructive text-destructive-foreground font-black text-[10px] px-2 py-0.5 rounded-full">
-                                                    -{item.discountPercentage}%
-                                                </Badge>
+                                        <CardContent className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                                            <div>
+                                                <div className="flex flex-wrap gap-1 mb-1.5">
+                                                    {product.category?.map(
+                                                        (category, idx) => (
+                                                            <span
+                                                                key={idx}
+                                                                className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground"
+                                                            >
+                                                                #{category.name}
+                                                            </span>
+                                                        ),
+                                                    )}
+                                                </div>
+                                                <h3 className="font-semibold text-sm line-clamp-2 group-hover:text-primary transition-colors">
+                                                    {product.name}
+                                                </h3>
                                             </div>
 
-                                            <CardContent className="p-3.5 space-y-3">
-                                                <h4 className="text-xs font-bold text-white line-clamp-2 group-hover:text-primary transition-colors">
-                                                    {item.name}
-                                                </h4>
-
+                                            <div className="pt-2 border-t border-border flex items-center justify-between">
                                                 <div>
-                                                    <div className="text-base font-black text-primary">
+                                                    <div className="text-base font-extrabold text-primary">
                                                         {formatRupiah(
-                                                            item.price,
+                                                            product.price,
                                                         )}
                                                     </div>
-                                                    <div className="text-[11px] text-zinc-500 line-through">
-                                                        {formatRupiah(
-                                                            item.originalPrice,
-                                                        )}
-                                                    </div>
+                                                    {product.originalPrice && (
+                                                        <div className="text-xs text-muted-foreground line-through">
+                                                            {formatRupiah(
+                                                                product.originalPrice,
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
-
-                                                <div className="space-y-1">
-                                                    <div className="flex justify-between text-[10px] text-zinc-400 font-semibold">
-                                                        <span>
-                                                            Terjual{" "}
-                                                            {item.soldCount}
-                                                        </span>
-                                                        <span>
-                                                            Stok{" "}
-                                                            {item.stockCount}
-                                                        </span>
-                                                    </div>
-                                                    <div className="w-full bg-zinc-800 h-2 rounded-full overflow-hidden">
-                                                        <div
-                                                            className="bg-primary h-full rounded-full transition-all duration-500"
-                                                            style={{
-                                                                width: `${percentageSold}%`,
-                                                            }}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    );
-                                })}
-                            </div>
+                                                <Button
+                                                    size="icon"
+                                                    className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 h-9 w-9"
+                                                >
+                                                    <Plus className="h-5 w-5" />
+                                                </Button>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </Link>
+                            ))}
                         </div>
                     </section>
                 )}
@@ -472,69 +401,82 @@ export default function StorefrontHome({
                         /* GRID PRODUK NORMAL KETIKA DATA ADA */
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                             {products.map((product) => (
-                                <Card
-                                    key={product.id}
-                                    className="group overflow-hidden rounded-2xl border-border bg-card shadow-sm hover:shadow-md transition-all duration-300 flex flex-col gap-0 p-0"
-                                >
-                                    <div className="relative aspect-square overflow-hidden bg-muted">
-                                        <img
-                                            src={product.image}
-                                            alt={product.name}
-                                            className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
-                                        />
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="absolute top-3 right-3 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background text-foreground h-8 w-8"
-                                        >
-                                            <Heart className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-
-                                    <CardContent className="p-4 flex-1 flex flex-col justify-between space-y-3">
-                                        <div>
-                                            <div className="flex flex-wrap gap-1 mb-1.5">
-                                                {product.category?.map(
-                                                    (category, idx) => (
-                                                        <span
-                                                            key={idx}
-                                                            className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground"
-                                                        >
-                                                            #{category.name}
-                                                        </span>
-                                                    ),
-                                                )}
-                                            </div>
-
-                                            <h3 className="font-semibold text-sm line-clamp-2 group-hover:text-primary transition-colors">
-                                                {product.name}
-                                            </h3>
-                                        </div>
-
-                                        <div className="pt-2 border-t border-border flex items-center justify-between">
-                                            <div>
-                                                <div className="text-base font-extrabold text-foreground">
-                                                    {formatRupiah(
-                                                        product.price,
-                                                    )}
-                                                </div>
-                                                {product.originalPrice && (
-                                                    <div className="text-xs text-muted-foreground line-through">
-                                                        {formatRupiah(
-                                                            product.originalPrice,
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </div>
+                                <Link href={productDetail(product.id).url}>
+                                    <Card
+                                        key={product.id}
+                                        className="group overflow-hidden rounded-2xl border-border bg-card shadow-sm hover:shadow-md transition-all duration-300 flex flex-col gap-0 p-0"
+                                    >
+                                        <div className="relative aspect-square overflow-hidden bg-muted">
+                                            <img
+                                                src={product.image}
+                                                alt={product.name}
+                                                className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
+                                            />
+                                            {product.isOnSale && (
+                                                <Badge className="absolute top-3 left-3 bg-destructive text-destructive-foreground font-bold text-[11px] px-2 py-0.5 rounded-full shadow-sm">
+                                                    {product.discountPercentage
+                                                        ? `-${product.discountPercentage}%`
+                                                        : product.originalPrice
+                                                        ? `Hemat ${formatRupiah(product.originalPrice - product.price)}`
+                                                        : "SALE"}
+                                                </Badge>
+                                            )}
                                             <Button
+                                                variant="ghost"
                                                 size="icon"
-                                                className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 h-9 w-9"
+                                                className="absolute top-3 right-3 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background text-foreground h-8 w-8"
                                             >
-                                                <Plus className="h-5 w-5" />
+                                                <Heart className="h-4 w-4" />
                                             </Button>
                                         </div>
-                                    </CardContent>
-                                </Card>
+
+                                        <CardContent className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                                            <div>
+                                                <div className="flex flex-wrap gap-1 mb-1.5">
+                                                    {product.category?.map(
+                                                        (category, idx) => (
+                                                            <span
+                                                                key={idx}
+                                                                className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground"
+                                                            >
+                                                                #{category.name}
+                                                            </span>
+                                                        ),
+                                                    )}
+                                                </div>
+
+                                                <h3 className="font-semibold text-sm line-clamp-2 group-hover:text-primary transition-colors">
+                                                    {product.name}
+                                                </h3>
+                                            </div>
+
+                                            <div className="pt-2 border-t border-border flex items-center justify-between">
+                                                <div>
+                                                    <div className="text-base font-extrabold text-foreground">
+                                                        {formatRupiah(
+                                                            product.price,
+                                                        )}
+                                                    </div>
+                                                    {product.originalPrice &&
+                                                        product.originalPrice >
+                                                            product.price && (
+                                                            <div className="text-xs text-muted-foreground line-through">
+                                                                {formatRupiah(
+                                                                    product.originalPrice,
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                </div>
+                                                <Button
+                                                    size="icon"
+                                                    className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 h-9 w-9"
+                                                >
+                                                    <Plus className="h-5 w-5" />
+                                                </Button>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </Link>
                             ))}
                         </div>
                     )}
