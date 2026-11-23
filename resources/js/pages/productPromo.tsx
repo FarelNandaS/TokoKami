@@ -172,61 +172,6 @@ export default function ProductsPromo({
             <Head title="Promo & Diskon - TokoKami" />
 
             <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
-                {/* ==================== HEADER / NAVBAR ==================== */}
-                <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="flex items-center justify-between h-16 gap-4">
-                            <Link href="/" className="flex items-center gap-2">
-                                <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center font-black text-primary-foreground text-xl shadow-sm">
-                                    TK
-                                </div>
-                                <span className="text-xl font-bold tracking-tight text-foreground">
-                                    Toko
-                                    <span className="text-primary">Kami</span>
-                                </span>
-                            </Link>
-
-                            <div className="hidden md:flex flex-1 max-w-md relative">
-                                <Input
-                                    type="text"
-                                    value={searchQuery}
-                                    onChange={(e) =>
-                                        setSearchQuery(e.target.value)
-                                    }
-                                    placeholder="Cari produk promo atau kategori..."
-                                    className="w-full pl-10 pr-4 h-10 rounded-full border-input focus-visible:ring-primary"
-                                />
-                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            </div>
-
-                            <div className="flex items-center gap-2 sm:gap-3">
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="relative hover:bg-accent rounded-full"
-                                >
-                                    <Heart className="h-5 w-5" />
-                                    <span className="sr-only">Wishlist</span>
-                                </Button>
-
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="relative hover:bg-accent rounded-full"
-                                >
-                                    <ShoppingBag className="h-5 w-5" />
-                                    {cartCount > 0 && (
-                                        <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center border-2 border-background">
-                                            {cartCount}
-                                        </span>
-                                    )}
-                                    <span className="sr-only">Keranjang</span>
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                </header>
-
                 {/* ==================== MAIN PROMO CATALOG ==================== */}
                 <main className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full flex-1 space-y-6">
                     {/* Breadcrumb & Header */}
@@ -486,14 +431,6 @@ export default function ProductsPromo({
                         </div>
                     )}
                 </main>
-
-                {/* ==================== FOOTER ==================== */}
-                <footer className="bg-background border-t border-border pt-10 pb-8 mt-auto">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs text-muted-foreground">
-                        © {new Date().getFullYear()} TokoKami. All rights
-                        reserved.
-                    </div>
-                </footer>
             </div>
         </>
     );
