@@ -175,7 +175,7 @@ class MainController extends Controller
             $allImages[] = ['id' => 0, 'url' => '/images/placeholder.jpg'];
         }
 
-        $categoryName = $product->categories->first()->name ?? 'Umum';
+        $category = $product->categories()->get();
 
         // Format varian atribut (Cth: Warna, Ukuran) dari database
         $variants = $product->variants;
@@ -251,7 +251,7 @@ class MainController extends Controller
             'rating' => 4.8,
             'reviewsCount' => 15,
             'stock' => $totalStock,
-            'category' => $categoryName,
+            'category' => $category,
             'tags' => ['Produk Pilihan', 'Terlaris'],
             'images' => $allImages,
             'attributes' => $formattedAttributes,

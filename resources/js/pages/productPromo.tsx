@@ -15,6 +15,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+} from "@/components/ui/select";
+import { SelectValue } from "@radix-ui/react-select";
+import { productDetail } from "@/routes";
 
 interface Category {
     id: number;
@@ -176,19 +184,6 @@ export default function ProductsPromo({
                 <main className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full flex-1 space-y-6">
                     {/* Breadcrumb & Header */}
                     <div className="space-y-2">
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <Link
-                                href="/"
-                                className="hover:text-primary transition-colors"
-                            >
-                                Beranda
-                            </Link>
-                            <ChevronRight className="h-3.5 w-3.5" />
-                            <span className="text-foreground font-medium">
-                                Promo & Diskon
-                            </span>
-                        </div>
-
                         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
                             <div className="space-y-1">
                                 <div className="inline-flex items-center gap-1.5 text-xs font-bold text-destructive bg-destructive/10 px-3 py-1 rounded-full">
@@ -279,21 +274,31 @@ export default function ProductsPromo({
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0">
-                            <select
+                            <Select
                                 value={sortBy}
-                                onChange={(e) =>
-                                    setSortBy(e.target.value as PromoSortOption)
+                                onValueChange={(val) =>
+                                    setSortBy(val as PromoSortOption)
                                 }
                                 aria-label="Urutkan promo"
-                                className="h-8 rounded-full border border-input bg-background px-3 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-ring"
                             >
-                                <option value="discount">Diskon Terbesar</option>
-                                <option value="latest">Terbaru</option>
-                                <option value="price-asc">Harga Terendah</option>
-                                <option value="price-desc">
-                                    Harga Tertinggi
-                                </option>
-                            </select>
+                                <SelectTrigger className="h-8 rounded-full border border-input bg-background px-3 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-ring">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="discount">
+                                        Diskon Terbesar
+                                    </SelectItem>
+                                    <SelectItem value="latest">
+                                        Terbaru
+                                    </SelectItem>
+                                    <SelectItem value="price-asc">
+                                        Harga Terendah
+                                    </SelectItem>
+                                    <SelectItem value="price-desc">
+                                        Harga Tertinggi
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                     </div>
 
@@ -330,102 +335,100 @@ export default function ProductsPromo({
                                         : null;
 
                                 return (
-                                    <Card
-                                        key={product.id}
-                                        className="group overflow-hidden rounded-2xl border-border bg-card shadow-sm hover:shadow-md transition-all duration-300 flex flex-col gap-0 p-0"
-                                    >
-                                        <div className="relative aspect-square overflow-hidden bg-muted">
-                                            <Link
-                                                href={`/product/${product.id}`}
-                                            >
+                                    <Link href={productDetail(product.id)}>
+                                        <Card
+                                            key={product.id}
+                                            className="group overflow-hidden rounded-2xl border-border bg-card shadow-sm hover:shadow-md transition-all duration-300 flex flex-col gap-0 p-0"
+                                        >
+                                            <div className="relative aspect-square overflow-hidden bg-muted">
                                                 <img
                                                     src={product.image}
                                                     alt={product.name}
                                                     className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
                                                 />
-                                            </Link>
 
-                                            <Badge className="absolute top-3 left-3 bg-destructive text-destructive-foreground font-bold text-[11px] px-2 py-0.5 rounded-full shadow-sm">
-                                                {product.discountPercentage
-                                                    ? `-${product.discountPercentage}%`
-                                                    : savedAmount
-                                                      ? `Hemat ${formatRupiah(savedAmount)}`
-                                                      : "PROMO"}
-                                            </Badge>
-
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                className="absolute top-3 right-3 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background text-foreground h-8 w-8"
-                                            >
-                                                <Heart className="h-4 w-4" />
-                                                <span className="sr-only">
-                                                    Simpan ke wishlist
-                                                </span>
-                                            </Button>
-                                        </div>
-
-                                        <CardContent className="p-4 flex-1 flex flex-col justify-between space-y-3">
-                                            <div>
-                                                <div className="flex flex-wrap gap-1 mb-1.5">
-                                                    {product.category?.map(
-                                                        (cat) => (
-                                                            <span
-                                                                key={cat.id}
-                                                                className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground"
-                                                            >
-                                                                #{cat.name}
-                                                            </span>
-                                                        ),
-                                                    )}
-                                                </div>
-
-                                                <Link
-                                                    href={`/product/${product.id}`}
-                                                >
-                                                    <h3 className="font-semibold text-sm line-clamp-2 group-hover:text-primary transition-colors">
-                                                        {product.name}
-                                                    </h3>
-                                                </Link>
-                                            </div>
-
-                                            <div className="pt-2 border-t border-border flex items-center justify-between gap-2">
-                                                <div>
-                                                    <div className="text-base font-extrabold text-primary">
-                                                        {formatRupiah(
-                                                            product.price,
-                                                        )}
-                                                    </div>
-                                                    {product.originalPrice &&
-                                                        product.originalPrice >
-                                                            product.price && (
-                                                            <div className="text-xs text-muted-foreground line-through">
-                                                                {formatRupiah(
-                                                                    product.originalPrice,
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                </div>
+                                                <Badge className="absolute top-3 left-3 bg-destructive text-destructive-foreground font-bold text-[11px] px-2 py-0.5 rounded-full shadow-sm">
+                                                    {product.discountPercentage
+                                                        ? `-${product.discountPercentage}%`
+                                                        : savedAmount
+                                                        ? `Hemat ${formatRupiah(savedAmount)}`
+                                                        : "PROMO"}
+                                                </Badge>
 
                                                 <Button
                                                     type="button"
+                                                    variant="ghost"
                                                     size="icon"
-                                                    onClick={() =>
-                                                        setCartCount(
-                                                            (c) => c + 1,
-                                                        )
-                                                    }
-                                                    className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 h-9 w-9 shrink-0"
+                                                    className="absolute top-3 right-3 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background text-foreground h-8 w-8"
                                                 >
-                                                    <Plus className="h-5 w-5" />
+                                                    <Heart className="h-4 w-4" />
                                                     <span className="sr-only">
-                                                        Tambah ke keranjang
+                                                        Simpan ke wishlist
                                                     </span>
                                                 </Button>
                                             </div>
-                                        </CardContent>
-                                    </Card>
+
+                                            <CardContent className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                                                <div>
+                                                    <div className="flex flex-wrap gap-1 mb-1.5">
+                                                        {product.category?.map(
+                                                            (cat) => (
+                                                                <span
+                                                                    key={cat.id}
+                                                                    className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground"
+                                                                >
+                                                                    #{cat.name}
+                                                                </span>
+                                                            ),
+                                                        )}
+                                                    </div>
+
+                                                    <Link
+                                                        href={`/product/${product.id}`}
+                                                    >
+                                                        <h3 className="font-semibold text-sm line-clamp-2 group-hover:text-primary transition-colors">
+                                                            {product.name}
+                                                        </h3>
+                                                    </Link>
+                                                </div>
+
+                                                <div className="pt-2 border-t border-border flex items-center justify-between gap-2">
+                                                    <div>
+                                                        <div className="text-base font-extrabold text-primary">
+                                                            {formatRupiah(
+                                                                product.price,
+                                                            )}
+                                                        </div>
+                                                        {product.originalPrice &&
+                                                            product.originalPrice >
+                                                                product.price && (
+                                                                <div className="text-xs text-muted-foreground line-through">
+                                                                    {formatRupiah(
+                                                                        product.originalPrice,
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                    </div>
+
+                                                    <Button
+                                                        type="button"
+                                                        size="icon"
+                                                        onClick={() =>
+                                                            setCartCount(
+                                                                (c) => c + 1,
+                                                            )
+                                                        }
+                                                        className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 h-9 w-9 shrink-0"
+                                                    >
+                                                        <Plus className="h-5 w-5" />
+                                                        <span className="sr-only">
+                                                            Tambah ke keranjang
+                                                        </span>
+                                                    </Button>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    </Link>
                                 );
                             })}
                         </div>

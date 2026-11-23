@@ -17,6 +17,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Category } from '@/lib/datatable-colums/category-management';
 
 interface ProductImage {
   id: number;
@@ -50,7 +51,7 @@ interface ProductProps {
     rating: number;
     reviewsCount: number;
     stock: number;
-    category: string;
+    category: Category[];
     tags: string[];
     images: ProductImage[];
     attributes: ProductVariantAttribute[];
@@ -170,12 +171,9 @@ export default function Product({ product }: ProductProps) {
             <div className="lg:col-span-6 space-y-6">
               <div>
                 <div className="flex flex-wrap gap-1.5 mb-2">
-                  <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-secondary text-secondary-foreground">
-                    {product.category}
-                  </span>
-                  {product.tags.map((tag, idx) => (
-                    <span key={idx} className="text-xs font-medium px-2.5 py-1 rounded-md bg-muted text-muted-foreground">
-                      #{tag}
+                  {product.category?.map((cat) => (
+                    <span key={cat.slug} className="text-xs font-medium px-2.5 py-1 rounded-md bg-muted text-muted-foreground">
+                      #{cat.name}
                     </span>
                   ))}
                 </div>
