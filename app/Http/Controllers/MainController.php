@@ -75,7 +75,7 @@ class MainController extends Controller
                             'percent' => $percent,
                         ];
                     })
-                    ->filter(fn ($item) => $item['sale_price'] < $item['normal_price'])
+                    ->filter(fn($item) => $item['sale_price'] < $item['normal_price'])
                     ->sortBy('sale_price')
                     ->first();
 
@@ -263,6 +263,170 @@ class MainController extends Controller
         ]);
     }
 
+    public function productCatalog()
+    {
+        $now = Carbon::now();
+
+        $activeSales = ProductSale::with('variant')
+            ->where(function ($q) use ($now) {
+                $q->where('start_sale', '<=', $now);
+            })
+            ->where(function ($q) use ($now) {
+                $q->where('end_sale', '>=', $now);
+            })
+            ->get()
+            ->groupBy('product_id');
+
+        $products = Product::with([
+            'images' => function ($query) {
+                $query->where('is_primary', true);
+            },
+            'categories',
+            'variants',
+        ])->latest()->get();
+
+        $formattedProducts = $products->map(function ($product) use ($activeSales) {
+            $coverImage = $product->images->first();
+            $salesForProduct = $activeSales->get($product->id, collect());
+
+            $displayPrice = (int) $product->price;
+            $originalPrice = null;
+            $discountPercentage = null;
+            $isOnSale = false;
+
+            if ($salesForProduct->isNotEmpty()) {
+                $bestSale = $salesForProduct
+                    ->map(function ($sale) use ($product) {
+                        $normalPrice = (int) ($sale->variant?->price ?? $product->price);
+                        $salePrice = (int) $sale->sale_price;
+
+                        $percent = $sale->discount_percentage !== null
+                            ? (int) round((float) $sale->discount_percentage)
+                            : ($normalPrice > 0 && $salePrice < $normalPrice
+                                ? (int) round((($normalPrice - $salePrice) / $normalPrice) * 100)
+                                : 0);
+
+                        return [
+                            'normal_price' => $normalPrice,
+                            'sale_price' => $salePrice,
+                            'percent' => $percent,
+                        ];
+                    })
+                    ->filter(fn($item) => $item['sale_price'] < $item['normal_price'])
+                    ->sortBy('sale_price')
+                    ->first();
+
+                if ($bestSale) {
+                    $isOnSale = true;
+                    $displayPrice = $bestSale['sale_price'];
+                    $originalPrice = $bestSale['normal_price'];
+                    $discountPercentage = $bestSale['percent'] > 0 ? $bestSale['percent'] : null;
+                }
+            }
+
+            return [
+                'id' => $product->id,
+                'name' => $product->name,
+                'description' => $product->description,
+                'price' => $displayPrice,
+                'image' => $coverImage ? '/storage/' . $coverImage->image_path : '/images/placeholder.jpg',
+                'originalPrice' => $originalPrice,
+                'discountPercentage' => $discountPercentage,
+                'isOnSale' => $isOnSale,
+                'category' => $product->categories,
+            ];
+        });
+
+        $categories = Category::orderBy('name')->get();
+
+        return Inertia::render('productCatalog', [
+            'products' => $formattedProducts,
+            'categories' => $categories,
+        ]);
+    }
+
+    public function promo()
+    {
+        $now = Carbon::now();
+
+        $activeSales = ProductSale::with('variant')
+            ->where(function ($q) use ($now) {
+                $q->whereNull('start_sale')->orWhere('start_sale', '<=', $now);
+            })
+            ->where(function ($q) use ($now) {
+                $q->whereNull('end_sale')->orWhere('end_sale', '>=', $now);
+            })
+            ->get()
+            ->groupBy('product_id');
+
+        $products = Product::with([
+            'images' => function ($query) {
+                $query->where('is_primary', true);
+            },
+            'categories',
+            'variants',
+        ])->latest()->get();
+
+        $promoProducts = $products->map(function ($product) use ($activeSales) {
+            $coverImage = $product->images->first();
+            $salesForProduct = $activeSales->get($product->id, collect());
+
+            $displayPrice = (int) $product->price;
+            $originalPrice = null;
+            $discountPercentage = null;
+            $isOnSale = false;
+
+            if ($salesForProduct->isNotEmpty()) {
+                $bestSale = $salesForProduct
+                    ->map(function ($sale) use ($product) {
+                        $normalPrice = (int) ($sale->variant?->price ?? $product->price);
+                        $salePrice = (int) $sale->sale_price;
+
+                        $percent = $sale->discount_percentage !== null
+                            ? (int) round((float) $sale->discount_percentage)
+                            : ($normalPrice > 0 && $salePrice < $normalPrice
+                                ? (int) round((($normalPrice - $salePrice) / $normalPrice) * 100)
+                                : 0);
+
+                        return [
+                            'normal_price' => $normalPrice,
+                            'sale_price' => $salePrice,
+                            'percent' => $percent,
+                        ];
+                    })
+                    ->filter(fn($item) => $item['sale_price'] < $item['normal_price'])
+                    ->sortBy('sale_price')
+                    ->first();
+
+                if ($bestSale) {
+                    $isOnSale = true;
+                    $displayPrice = $bestSale['sale_price'];
+                    $originalPrice = $bestSale['normal_price'];
+                    $discountPercentage = $bestSale['percent'] > 0 ? $bestSale['percent'] : null;
+                }
+            }
+
+            return [
+                'id' => $product->id,
+                'name' => $product->name,
+                'description' => $product->description,
+                'price' => $displayPrice,
+                'image' => $coverImage ? '/storage/' . $coverImage->image_path : '/images/placeholder.jpg',
+                'originalPrice' => $originalPrice,
+                'discountPercentage' => $discountPercentage,
+                'isOnSale' => $isOnSale,
+                'category' => $product->categories,
+            ];
+        })->filter(fn($item) => $item['isOnSale'])->values();
+
+        $categories = Category::orderBy('name')->get();
+
+        return Inertia::render('productPromo', [
+            'products' => $promoProducts,
+            'categories' => $categories,
+        ]);
+    }
+
     // Controller Admin 
     public function dashboard()
     {
@@ -377,7 +541,7 @@ class MainController extends Controller
     public function saleManagement()
     {
         $saleProducts = ProductSale::with(['product', 'variant.attributeValues.attribute'])->latest()->get();
-    
+
         $products = Product::with(['variants.attributeValues.attribute'])->orderBy('name')->get();
 
         return Inertia::render('admin/saleManagement', [

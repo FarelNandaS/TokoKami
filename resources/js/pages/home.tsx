@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Banner } from "@/lib/datatable-colums/banner-slider";
-import { productDetail } from "@/routes";
+import { productCatalog, productDetail, promo } from "@/routes";
 
 // ==================== INTERFACES (Untuk Props CMS) ====================
 interface Category {
@@ -282,7 +282,7 @@ export default function StorefrontHome({
                                 </p>
                             </div>
                             <Link
-                                href="/promo"
+                                href={promo()}
                                 className="text-sm font-semibold text-primary hover:underline hidden sm:flex items-center gap-1"
                             >
                                 Lihat Semua <ChevronRight className="h-4 w-4" />
@@ -376,7 +376,7 @@ export default function StorefrontHome({
                             </p>
                         </div>
                         <Link
-                            href="/products"
+                            href={productCatalog()}
                             className="text-sm font-semibold text-primary hover:underline hidden sm:flex items-center gap-1"
                         >
                             Lihat Semua <ChevronRight className="h-4 w-4" />

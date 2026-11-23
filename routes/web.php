@@ -9,6 +9,8 @@ use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [MainController::class, 'home'])->name('home');
+Route::get('/promo', [MainController::class, 'promo'])->name('promo');
+Route::get('/product/catalog', [MainController::class, 'productCatalog'])->name('product-catalog');
 Route::get('/product/{id}', [MainController::class, 'productDetail'])->name('product-detail');
 
 Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
