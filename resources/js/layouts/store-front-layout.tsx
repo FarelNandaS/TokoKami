@@ -79,7 +79,7 @@ export default function StorefrontLayout({
                                     type="button"
                                     variant="ghost"
                                     size="icon"
-                                    className="relative hover:bg-accent rounded-full"
+                                    className="relative hover:bg-accent rounded-full cursor-pointer"
                                 >
                                     <Heart className="h-5 w-5" />
                                     {wishlistCount > 0 && (
@@ -95,7 +95,7 @@ export default function StorefrontLayout({
                                 type="button"
                                 variant="ghost"
                                 size="icon"
-                                className="relative hover:bg-accent rounded-full"
+                                className="relative hover:bg-accent rounded-full cursor-pointer"
                             >
                                 <ShoppingBag className="h-5 w-5" />
                                 {externalCartCount > 0 && (
