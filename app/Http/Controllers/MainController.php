@@ -88,8 +88,12 @@ class MainController extends Controller
             }
 
             $totalStock = $product->variants->count() > 0
-                    ? $product->variants->sum('stock')
-                    : ($product->stock ?? 0);
+                ? $product->variants->sum('stock')
+                : ($product->stock ?? 0);
+
+            $hasVariants = $product->variants->count() > 0
+                ? true
+                : false;
 
             return [
                 'id' => $product->id,
@@ -101,6 +105,7 @@ class MainController extends Controller
                 'discountPercentage' => $discountPercentage,
                 'isOnSale' => $isOnSale,
                 'stock' => $totalStock,
+                'hasVariants' => $hasVariants,
                 'category' => $category,
             ];
         });
@@ -343,8 +348,12 @@ class MainController extends Controller
             }
 
             $totalStock = $product->variants->count() > 0
-                    ? $product->variants->sum('stock')
-                    : ($product->stock ?? 0);
+                ? $product->variants->sum('stock')
+                : ($product->stock ?? 0);
+
+            $hasVariants = $product->variants->count() > 0
+                ? true
+                : false;
 
             return [
                 'id' => $product->id,
@@ -356,6 +365,7 @@ class MainController extends Controller
                 'discountPercentage' => $discountPercentage,
                 'isOnSale' => $isOnSale,
                 'stock' => $totalStock,
+                'hasVariants' => $hasVariants,
                 'category' => $product->categories,
             ];
         });
@@ -430,8 +440,12 @@ class MainController extends Controller
             }
 
             $totalStock = $product->variants->count() > 0
-                    ? $product->variants->sum('stock')
-                    : ($product->stock ?? 0);
+                ? $product->variants->sum('stock')
+                : ($product->stock ?? 0);
+
+            $hasVariants = $product->variants->count() > 0
+                ? true
+                : false;
 
             return [
                 'id' => $product->id,
@@ -443,6 +457,7 @@ class MainController extends Controller
                 'discountPercentage' => $discountPercentage,
                 'isOnSale' => $isOnSale,
                 'stock' => $totalStock,
+                'hasVariants' => $hasVariants,
                 'category' => $product->categories,
             ];
         })->filter(fn($item) => $item['isOnSale'])->values();
@@ -542,6 +557,10 @@ class MainController extends Controller
                     ? $product->variants->sum('stock')
                     : ($product->stock ?? 0);
 
+                $hasVariants = $product->variants->count() > 0
+                ? true
+                : false;
+
                 return [
                     'id' => $product->id,
                     'name' => $product->name,
@@ -552,6 +571,7 @@ class MainController extends Controller
                     'discountPercentage' => $discountPercentage,
                     'isOnSale' => $isOnSale,
                     'stock' => (int) $totalStock,
+                    'hasVariants' => $hasVariants,
                     'category' => $product->categories,
                 ];
             })
@@ -559,6 +579,162 @@ class MainController extends Controller
 
         return Inertia::render('wishlist', [
             'products' => $formattedProducts,
+        ]);
+    }
+
+    public function cart(Request $request)
+    {
+        $rawItems = $request->query('items', '');
+        $decoded = is_string($rawItems) && $rawItems !== ''
+            ? json_decode($rawItems, true)
+            : [];
+
+        if (!is_array($decoded) || empty($decoded)) {
+            return Inertia::render('cart', [
+                'cartItems' => [],
+            ]);
+        }
+
+        $requestedItems = collect($decoded)
+            ->map(function ($row) {
+                $productId = isset($row['productId']) ? (int) $row['productId'] : 0;
+                $variantId = isset($row['variantId']) && $row['variantId'] !== null && $row['variantId'] !== ''
+                    ? (int) $row['variantId']
+                    : null;
+                $quantity = isset($row['quantity']) ? max(1, (int) $row['quantity']) : 1;
+
+                return [
+                    'productId' => $productId,
+                    'variantId' => $variantId,
+                    'quantity' => $quantity,
+                ];
+            })
+            ->filter(fn($row) => $row['productId'] > 0)
+            ->values();
+
+        if ($requestedItems->isEmpty()) {
+            return Inertia::render('cart', [
+                'cartItems' => [],
+            ]);
+        }
+
+        $productIds = $requestedItems->pluck('productId')->unique()->values();
+        $now = Carbon::now();
+
+        $activeSales = ProductSale::whereIn('product_id', $productIds)
+            ->where(function ($q) use ($now) {
+                $q->whereNull('start_sale')->orWhere('start_sale', '<=', $now);
+            })
+            ->where(function ($q) use ($now) {
+                $q->whereNull('end_sale')->orWhere('end_sale', '>=', $now);
+            })
+            ->get()
+            ->groupBy('product_id');
+
+        $products = Product::with([
+            'images' => function ($query) {
+                $query->where('is_primary', true);
+            },
+            'categories',
+            'variants.attributeValues.attribute',
+        ])
+            ->whereIn('id', $productIds)
+            ->get()
+            ->keyBy('id');
+
+        $resolveSaleInfo = function (int $normalPrice, ?ProductSale $sale): array {
+            if ($sale && (int) $sale->sale_price < $normalPrice) {
+                $salePrice = (int) $sale->sale_price;
+                $percent = $sale->discount_percentage !== null
+                    ? (int) round((float) $sale->discount_percentage)
+                    : ($normalPrice > 0
+                        ? (int) round((($normalPrice - $salePrice) / $normalPrice) * 100)
+                        : 0);
+
+                return [
+                    'price' => $salePrice,
+                    'originalPrice' => $normalPrice,
+                    'discountPercentage' => max(0, $percent),
+                    'isOnSale' => true,
+                ];
+            }
+
+            return [
+                'price' => $normalPrice,
+                'originalPrice' => null,
+                'discountPercentage' => 0,
+                'isOnSale' => false,
+            ];
+        };
+
+        $formattedCartItems = $requestedItems
+            ->map(function ($req) use ($products, $activeSales, $resolveSaleInfo) {
+                $product = $products->get($req['productId']);
+                if (!$product) {
+                    return null;
+                }
+
+                $salesForProduct = $activeSales->get($product->id, collect());
+                $productLevelSale = $salesForProduct->firstWhere('product_variant_id', null);
+                $variantSalesMap = $salesForProduct->whereNotNull('product_variant_id')->keyBy('product_variant_id');
+
+                $variant = null;
+                $variantLabel = null;
+                $variantId = null;
+
+                if ($product->variants->isNotEmpty()) {
+                    $variant = $req['variantId']
+                        ? $product->variants->firstWhere('id', $req['variantId'])
+                        : $product->variants->first();
+
+                    if (!$variant) {
+                        return null;
+                    }
+
+                    $variantId = (int) $variant->id;
+                    $combination = $variant->attributeValues
+                        ->pluck('value')
+                        ->filter()
+                        ->join(' / ');
+                    $variantLabel = $combination !== '' ? $combination : ($variant->sku ?? "Varian #{$variant->id}");
+                }
+
+                $normalPrice = (int) ($variant?->price ?? $product->price);
+                $matchedSale = $variantId !== null
+                    ? ($variantSalesMap->get($variantId) ?? $productLevelSale)
+                    : $productLevelSale;
+
+                $saleInfo = $resolveSaleInfo($normalPrice, $matchedSale);
+                $availableStock = $variant
+                    ? (int) ($variant->stock ?? 0)
+                    : (int) ($product->stock ?? 0);
+
+                $safeQty = $availableStock > 0
+                    ? min($req['quantity'], $availableStock)
+                    : $req['quantity'];
+
+                $coverImage = $product->images->first();
+
+                return [
+                    'productId' => (int) $product->id,
+                    'variantId' => $variantId,
+                    'variantLabel' => $variantLabel,
+                    'name' => $product->name,
+                    'image' => $coverImage ? '/storage/' . $coverImage->image_path : '/images/placeholder.jpg',
+                    'price' => $saleInfo['price'],
+                    'originalPrice' => $saleInfo['originalPrice'],
+                    'discountPercentage' => $saleInfo['discountPercentage'],
+                    'isOnSale' => $saleInfo['isOnSale'],
+                    'quantity' => $safeQty,
+                    'stock' => $availableStock,
+                    'category' => $product->categories->first()->name ?? 'Umum',
+                ];
+            })
+            ->filter()
+            ->values();
+
+        return Inertia::render('cart', [
+            'cartItems' => $formattedCartItems,
         ]);
     }
 

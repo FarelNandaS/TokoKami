@@ -25,6 +25,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Banner } from "@/lib/datatable-colums/banner-slider";
 import { productCatalog, productDetail, promo } from "@/routes";
 import { useWishlist } from "@/hooks/use-whislist";
+import { useCart } from "@/hooks/use-cart";
 
 // ==================== INTERFACES (Untuk Props CMS) ====================
 interface Category {
@@ -43,6 +44,7 @@ interface ProductItem {
     discountPercentage?: number | null;
     isOnSale?: boolean;
     stock?: number;
+    hasVariants: boolean;
     category: Category[];
 }
 
@@ -65,6 +67,7 @@ export default function StorefrontHome({
     const [selectedIndex, setSelectedIndex] = useState(0);
 
     const { isWishlisted, toggleWishlist } = useWishlist();
+    const { addItem } = useCart();
 
     useEffect(() => {
         if (!emblaApi) return;
@@ -319,13 +322,9 @@ export default function StorefrontHome({
                                                         )}
                                                     </div>
 
-                                                    <Link
-                                                        href={`/product/${product.id}`}
-                                                    >
-                                                        <h3 className="font-semibold text-sm line-clamp-2 group-hover:text-primary transition-colors">
-                                                            {product.name}
-                                                        </h3>
-                                                    </Link>
+                                                    <h3 className="font-semibold text-sm line-clamp-2 group-hover:text-primary transition-colors">
+                                                        {product.name}
+                                                    </h3>
                                                 </div>
 
                                                 <div className="pt-2 border-t border-border flex items-center justify-between gap-2">
@@ -350,12 +349,19 @@ export default function StorefrontHome({
                                                         type="button"
                                                         size="icon"
                                                         disabled={isOutOfStock}
-                                                        onClick={() =>
-                                                            setCartCount(
-                                                                (c) => c + 1,
-                                                            )
-                                                        }
-                                                        className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 h-9 w-9 shrink-0"
+                                                        onClick={(e) => {
+                                                            if (
+                                                                !product.hasVariants
+                                                            ) {
+                                                                e.preventDefault();
+                                                                e.stopPropagation();
+                                                                addItem(
+                                                                    product.id,
+                                                                    1,
+                                                                );
+                                                            }
+                                                        }}
+                                                        className="cursor-pointer rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 h-9 w-9 shrink-0"
                                                     >
                                                         <Plus className="h-5 w-5" />
                                                         <span className="sr-only">
@@ -497,13 +503,9 @@ export default function StorefrontHome({
                                                         )}
                                                     </div>
 
-                                                    <Link
-                                                        href={`/product/${product.id}`}
-                                                    >
-                                                        <h3 className="font-semibold text-sm line-clamp-2 group-hover:text-primary transition-colors">
-                                                            {product.name}
-                                                        </h3>
-                                                    </Link>
+                                                    <h3 className="font-semibold text-sm line-clamp-2 group-hover:text-primary transition-colors">
+                                                        {product.name}
+                                                    </h3>
                                                 </div>
 
                                                 <div className="pt-2 border-t border-border flex items-center justify-between gap-2">
@@ -528,12 +530,14 @@ export default function StorefrontHome({
                                                         type="button"
                                                         size="icon"
                                                         disabled={isOutOfStock}
-                                                        onClick={() =>
-                                                            setCartCount(
-                                                                (c) => c + 1,
-                                                            )
-                                                        }
-                                                        className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 h-9 w-9 shrink-0"
+                                                        onClick={(e) => {
+                                                            if (!product.hasVariants) {
+                                                                e.preventDefault();
+                                                                e.stopPropagation();
+                                                                addItem(product.id, 1);
+                                                            }
+                                                        }}
+                                                        className="cursor-pointer rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 h-9 w-9 shrink-0"
                                                     >
                                                         <Plus className="h-5 w-5" />
                                                         <span className="sr-only">

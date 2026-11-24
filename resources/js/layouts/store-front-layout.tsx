@@ -5,7 +5,8 @@ import { Search, ShoppingBag, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useWishlist } from "@/hooks/use-whislist";
-import { wishlish } from "@/routes";
+import { cart, wishlish } from "@/routes";
+import { useCart } from "@/hooks/use-cart";
 
 interface StorefrontLayoutProps {
     children: React.ReactNode;
@@ -25,6 +26,7 @@ export default function StorefrontLayout({
     const [internalSearch, setInternalSearch] = useState("");
 
     const {wishlistCount} = useWishlist();
+    const {totalQuantity} = useCart();
 
     const currentSearch = searchValue !== undefined ? searchValue : internalSearch;
 
@@ -91,20 +93,22 @@ export default function StorefrontLayout({
                                 </Button>
                             </Link>
 
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="relative hover:bg-accent rounded-full cursor-pointer"
-                            >
-                                <ShoppingBag className="h-5 w-5" />
-                                {externalCartCount > 0 && (
-                                    <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center border-2 border-background">
-                                        {externalCartCount}
-                                    </span>
-                                )}
-                                <span className="sr-only">Keranjang</span>
-                            </Button>
+                            <Link href={cart()}>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="relative hover:bg-accent rounded-full cursor-pointer"
+                                >
+                                    <ShoppingBag className="h-5 w-5" />
+                                    {totalQuantity > 0 && (
+                                        <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center border-2 border-background">
+                                            {totalQuantity}
+                                        </span>
+                                    )}
+                                    <span className="sr-only">Keranjang</span>
+                                </Button>
+                            </Link>
                         </div>
                     </div>
                 </div>

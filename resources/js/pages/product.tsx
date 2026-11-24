@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Category } from '@/lib/datatable-colums/category-management';
+import { useCart } from '@/hooks/use-cart';
 
 interface ProductImage {
   id: number;
@@ -62,6 +63,8 @@ interface ProductProps {
 export default function Product({ product }: ProductProps) {
   const [selectedImage, setSelectedImage] = useState(product.images[0]?.url || '/images/placeholder.jpg');
   const [quantity, setQuantity] = useState(1);
+
+  const {addItem} = useCart();
   
   // State untuk menyimpan opsi varian yang dipilih (inisialisasi dinamis dari data produk)
   const [selectedOptions, setSelectedOptions] = useState<{ [key: string]: string }>(() => {
@@ -265,7 +268,7 @@ export default function Product({ product }: ProductProps) {
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                  <Button size="lg" className="flex-1 rounded-2xl font-bold py-6 gap-2 bg-secondary text-secondary-foreground hover:bg-secondary/80">
+                  <Button onClick={() => addItem(product.id, quantity, matchedVariant?.id ?? null, activeStock)} size="lg" className="flex-1 rounded-2xl font-bold py-6 gap-2 bg-secondary text-secondary-foreground hover:bg-secondary/80">
                     <ShoppingBag className="h-5 w-5" /> Masukkan Keranjang
                   </Button>
                   <Button size="lg" className="flex-1 rounded-2xl font-bold py-6 gap-2 shadow-lg shadow-primary/25">

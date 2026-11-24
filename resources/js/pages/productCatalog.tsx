@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { productDetail } from "@/routes";
 import { useWishlist } from "@/hooks/use-whislist";
+import { useCart } from "@/hooks/use-cart";
 
 interface Category {
     id: number;
@@ -41,6 +42,7 @@ interface CatalogProductItem {
     discountPercentage?: number | null;
     isOnSale?: boolean;
     stock?: number;
+    hasVariants: boolean | false;
     category: Category[];
     created_at?: string;
 }
@@ -68,6 +70,7 @@ export default function ProductsCatalog({
     const [cartCount, setCartCount] = useState(2);
 
     const { isWishlisted, toggleWishlist } = useWishlist();
+    const { addItem } = useCart();
 
     const formatRupiah = (amount: number) => {
         return new Intl.NumberFormat("id-ID", {
@@ -458,12 +461,14 @@ export default function ProductsCatalog({
                                                         type="button"
                                                         size="icon"
                                                         disabled={isOutOfStock}
-                                                        onClick={() =>
-                                                            setCartCount(
-                                                                (c) => c + 1,
-                                                            )
-                                                        }
-                                                        className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 h-9 w-9 shrink-0"
+                                                        onClick={(e) => {
+                                                            if (!product.hasVariants) {
+                                                                e.preventDefault();
+                                                                e.stopPropagation();
+                                                                addItem(product.id, 1);
+                                                            }
+                                                        }}
+                                                        className="cursor-pointer rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 h-9 w-9 shrink-0"
                                                     >
                                                         <Plus className="h-5 w-5" />
                                                         <span className="sr-only">

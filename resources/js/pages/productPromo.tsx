@@ -24,6 +24,7 @@ import {
 import { SelectValue } from "@radix-ui/react-select";
 import { productDetail } from "@/routes";
 import { useWishlist } from "@/hooks/use-whislist";
+import { useCart } from "@/hooks/use-cart";
 
 interface Category {
     id: number;
@@ -41,6 +42,7 @@ interface PromoProductItem {
     discountPercentage?: number | null;
     isOnSale?: boolean;
     stock?: number;
+    hasVariants: boolean | false;
     category: Category[];
 }
 
@@ -61,6 +63,7 @@ export default function ProductsPromo({
     const [cartCount, setCartCount] = useState(2);
 
     const { isWishlisted, toggleWishlist } = useWishlist();
+    const { addItem } = useCart();
 
     // Drag-to-scroll horizontal untuk bar kategori
     const categoryScrollRef = useRef<HTMLDivElement | null>(null);
@@ -439,12 +442,14 @@ export default function ProductsPromo({
                                                         type="button"
                                                         size="icon"
                                                         disabled={isOutOfStock}
-                                                        onClick={() =>
-                                                            setCartCount(
-                                                                (c) => c + 1,
-                                                            )
-                                                        }
-                                                        className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 h-9 w-9 shrink-0"
+                                                        onClick={(e) => {
+                                                            if (!product.hasVariants) {
+                                                                e.preventDefault();
+                                                                e.stopPropagation();
+                                                                addItem(product.id, 1);
+                                                            }
+                                                        }}
+                                                        className="cursor-pointer rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 h-9 w-9 shrink-0"
                                                     >
                                                         <Plus className="h-5 w-5" />
                                                         <span className="sr-only">

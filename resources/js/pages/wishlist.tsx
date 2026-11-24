@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { useWishlist } from "@/hooks/use-whislist";
+import { useCart } from "@/hooks/use-cart";
+import { productDetail } from "@/routes";
 
 interface Category {
     id: number;
@@ -30,6 +32,7 @@ interface WishlistProductItem {
     discountPercentage?: number | null;
     isOnSale?: boolean;
     stock?: number;
+    hasVariants: boolean | false;
     category: Category[];
 }
 
@@ -44,6 +47,8 @@ export default function WishlistPage({ products = [] }: WishlistPageProps) {
     const [cartCount, setCartCount] = useState(2);
     const [isSyncing, setIsSyncing] = useState(false);
     const lastFetchedKeyRef = useRef<string>("");
+
+    const { addItem } = useCart();
 
     // Sinkronkan ID di localStorage dengan data produk terbaru dari backend
     useEffect(() => {
@@ -225,12 +230,12 @@ export default function WishlistPage({ products = [] }: WishlistPageProps) {
                                 product.stock <= 0;
 
                             return (
-                                <Card
-                                    key={product.id}
-                                    className="group overflow-hidden rounded-2xl border-border bg-card shadow-sm hover:shadow-md transition-all duration-300 flex flex-col gap-0 p-0"
-                                >
-                                    <div className="relative aspect-square overflow-hidden bg-muted">
-                                        <Link href={`/product/${product.id}`}>
+                                <Link href={productDetail(product.id)}>
+                                    <Card
+                                        key={product.id}
+                                        className="group overflow-hidden rounded-2xl border-border bg-card shadow-sm hover:shadow-md transition-all duration-300 flex flex-col gap-0 p-0"
+                                    >
+                                        <div className="relative aspect-square overflow-hidden bg-muted">
                                             <img
                                                 src={product.image}
                                                 alt={product.name}
@@ -240,103 +245,112 @@ export default function WishlistPage({ products = [] }: WishlistPageProps) {
                                                         : ""
                                                 }`}
                                             />
-                                        </Link>
 
-                                        {hasSale && (
-                                            <Badge className="absolute top-3 left-3 bg-destructive text-destructive-foreground font-bold text-[11px] px-2 py-0.5 rounded-full shadow-sm">
-                                                {product.discountPercentage
-                                                    ? `-${product.discountPercentage}%`
-                                                    : product.originalPrice
-                                                      ? `Hemat ${formatRupiah(product.originalPrice - product.price)}`
-                                                      : "SALE"}
-                                            </Badge>
-                                        )}
+                                            {hasSale && (
+                                                <Badge className="absolute top-3 left-3 bg-destructive text-destructive-foreground font-bold text-[11px] px-2 py-0.5 rounded-full shadow-sm">
+                                                    {product.discountPercentage
+                                                        ? `-${product.discountPercentage}%`
+                                                        : product.originalPrice
+                                                          ? `Hemat ${formatRupiah(product.originalPrice - product.price)}`
+                                                          : "SALE"}
+                                                </Badge>
+                                            )}
 
-                                        {isOutOfStock && (
-                                            <Badge
-                                                variant="secondary"
-                                                className="absolute bottom-3 left-3 text-[10px] font-bold"
-                                            >
-                                                Stok Habis
-                                            </Badge>
-                                        )}
-
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() =>
-                                                removeWishlist(product.id)
-                                            }
-                                            title="Hapus dari wishlist"
-                                            className="absolute top-3 right-3 rounded-full bg-background/85 backdrop-blur-sm hover:bg-destructive hover:text-destructive-foreground text-rose-500 h-8 w-8 transition-colors"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                            <span className="sr-only">
-                                                Hapus dari wishlist
-                                            </span>
-                                        </Button>
-                                    </div>
-
-                                    <CardContent className="p-4 flex-1 flex flex-col justify-between space-y-3">
-                                        <div>
-                                            <div className="flex flex-wrap gap-1 mb-1.5">
-                                                {product.category?.map(
-                                                    (cat) => (
-                                                        <span
-                                                            key={cat.id}
-                                                            className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground"
-                                                        >
-                                                            #{cat.name}
-                                                        </span>
-                                                    ),
-                                                )}
-                                            </div>
-
-                                            <Link
-                                                href={`/product/${product.id}`}
-                                            >
-                                                <h3 className="font-semibold text-sm line-clamp-2 group-hover:text-primary transition-colors">
-                                                    {product.name}
-                                                </h3>
-                                            </Link>
-                                        </div>
-
-                                        <div className="pt-2 border-t border-border flex items-center justify-between gap-2">
-                                            <div>
-                                                <div className="text-base font-extrabold text-foreground">
-                                                    {formatRupiah(
-                                                        product.price,
-                                                    )}
-                                                </div>
-                                                {product.originalPrice &&
-                                                    product.originalPrice >
-                                                        product.price && (
-                                                        <div className="text-xs text-muted-foreground line-through">
-                                                            {formatRupiah(
-                                                                product.originalPrice,
-                                                            )}
-                                                        </div>
-                                                    )}
-                                            </div>
+                                            {isOutOfStock && (
+                                                <Badge
+                                                    variant="secondary"
+                                                    className="absolute bottom-3 left-3 text-[10px] font-bold"
+                                                >
+                                                    Stok Habis
+                                                </Badge>
+                                            )}
 
                                             <Button
                                                 type="button"
+                                                variant="ghost"
                                                 size="icon"
-                                                disabled={isOutOfStock}
                                                 onClick={() =>
-                                                    setCartCount((c) => c + 1)
+                                                    removeWishlist(product.id)
                                                 }
-                                                className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 h-9 w-9 shrink-0"
+                                                title="Hapus dari wishlist"
+                                                className="absolute top-3 right-3 rounded-full bg-background/85 backdrop-blur-sm hover:bg-destructive hover:text-destructive-foreground text-rose-500 h-8 w-8 transition-colors"
                                             >
-                                                <Plus className="h-5 w-5" />
+                                                <Trash2 className="h-4 w-4" />
                                                 <span className="sr-only">
-                                                    Tambah ke keranjang
+                                                    Hapus dari wishlist
                                                 </span>
                                             </Button>
                                         </div>
-                                    </CardContent>
-                                </Card>
+
+                                        <CardContent className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                                            <div>
+                                                <div className="flex flex-wrap gap-1 mb-1.5">
+                                                    {product.category?.map(
+                                                        (cat) => (
+                                                            <span
+                                                                key={cat.id}
+                                                                className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground"
+                                                            >
+                                                                #{cat.name}
+                                                            </span>
+                                                        ),
+                                                    )}
+                                                </div>
+
+                                                <Link
+                                                    href={`/product/${product.id}`}
+                                                >
+                                                    <h3 className="font-semibold text-sm line-clamp-2 group-hover:text-primary transition-colors">
+                                                        {product.name}
+                                                    </h3>
+                                                </Link>
+                                            </div>
+
+                                            <div className="pt-2 border-t border-border flex items-center justify-between gap-2">
+                                                <div>
+                                                    <div className="text-base font-extrabold text-foreground">
+                                                        {formatRupiah(
+                                                            product.price,
+                                                        )}
+                                                    </div>
+                                                    {product.originalPrice &&
+                                                        product.originalPrice >
+                                                            product.price && (
+                                                            <div className="text-xs text-muted-foreground line-through">
+                                                                {formatRupiah(
+                                                                    product.originalPrice,
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                </div>
+
+                                                <Button
+                                                    type="button"
+                                                    size="icon"
+                                                    disabled={isOutOfStock}
+                                                    onClick={(e) => {
+                                                        if (
+                                                            !product.hasVariants
+                                                        ) {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            addItem(
+                                                                product.id,
+                                                                1,
+                                                            );
+                                                        }
+                                                    }}
+                                                    className="cursor-pointer rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 h-9 w-9 shrink-0"
+                                                >
+                                                    <Plus className="h-5 w-5" />
+                                                    <span className="sr-only">
+                                                        Tambah ke keranjang
+                                                    </span>
+                                                </Button>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </Link>
                             );
                         })}
                     </div>

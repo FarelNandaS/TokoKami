@@ -13,6 +13,7 @@ Route::get('/product/catalog', [MainController::class, 'productCatalog'])->name(
 Route::get('/product/{id}', [MainController::class, 'productDetail'])->name('product-detail');
 Route::get('/promo', [MainController::class, 'promo'])->name('promo');
 Route::get('/wishlist', [MainController::class, 'wishlist'])->name('wishlish');
+Route::get('/cart', [MainController::class, 'cart'])->name('cart');
 
 Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
     //dashboar routes
