@@ -4,6 +4,8 @@ import { Search, ShoppingBag, Heart } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useWishlist } from "@/hooks/use-whislist";
+import { wishlish } from "@/routes";
 
 interface StorefrontLayoutProps {
     children: React.ReactNode;
@@ -21,6 +23,8 @@ export default function StorefrontLayout({
     cartCount: externalCartCount = 2,
 }: StorefrontLayoutProps) {
     const [internalSearch, setInternalSearch] = useState("");
+
+    const {wishlistCount} = useWishlist();
 
     const currentSearch = searchValue !== undefined ? searchValue : internalSearch;
 
@@ -70,15 +74,22 @@ export default function StorefrontLayout({
                         </form>
 
                         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="relative hover:bg-accent rounded-full"
-                            >
-                                <Heart className="h-5 w-5" />
-                                <span className="sr-only">Wishlist</span>
-                            </Button>
+                            <Link href={wishlish()}>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="relative hover:bg-accent rounded-full"
+                                >
+                                    <Heart className="h-5 w-5" />
+                                    {wishlistCount > 0 && (
+                                        <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center border-2 border-background">
+                                            {wishlistCount}
+                                        </span>
+                                    )}
+                                    <span className="sr-only">Wishlist</span>
+                                </Button>
+                            </Link>
 
                             <Button
                                 type="button"

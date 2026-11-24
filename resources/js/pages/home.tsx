@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Banner } from "@/lib/datatable-colums/banner-slider";
 import { productCatalog, productDetail, promo } from "@/routes";
+import { useWishlist } from "@/hooks/use-whislist";
 
 // ==================== INTERFACES (Untuk Props CMS) ====================
 interface Category {
@@ -41,6 +42,7 @@ interface ProductItem {
     originalPrice?: number | null;
     discountPercentage?: number | null;
     isOnSale?: boolean;
+    stock?: number;
     category: Category[];
 }
 
@@ -61,6 +63,8 @@ export default function StorefrontHome({
         Autoplay({ delay: 5000, stopOnInteraction: false }),
     ]);
     const [selectedIndex, setSelectedIndex] = useState(0);
+
+    const { isWishlisted, toggleWishlist } = useWishlist();
 
     useEffect(() => {
         if (!emblaApi) return;
@@ -238,72 +242,132 @@ export default function StorefrontHome({
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                            {promoProducts.map((product) => (
-                                <Link href={productDetail(product.id).url}>
-                                    <Card
-                                        key={`promo-${product.id}`}
-                                        className="group overflow-hidden rounded-2xl border-border bg-card shadow-sm hover:shadow-md transition-all duration-300 flex flex-col gap-0 p-0"
-                                    >
-                                        <div className="relative aspect-square overflow-hidden bg-muted">
-                                            <img
-                                                src={product.image}
-                                                alt={product.name}
-                                                className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
-                                            />
-                                            <Badge className="absolute top-3 left-3 bg-destructive text-destructive-foreground font-bold text-[11px] px-2 py-0.5 rounded-full shadow-sm">
-                                                {product.discountPercentage
-                                                    ? `-${product.discountPercentage}%`
-                                                    : product.originalPrice
-                                                    ? `Hemat ${formatRupiah(product.originalPrice - product.price)}`
-                                                    : "SALE"}
-                                            </Badge>
-                                        </div>
+                            {promoProducts.map((product) => {
+                                const isOutOfStock =
+                                    typeof product.stock === "number" &&
+                                    product.stock <= 0;
 
-                                        <CardContent className="p-4 flex-1 flex flex-col justify-between space-y-3">
-                                            <div>
-                                                <div className="flex flex-wrap gap-1 mb-1.5">
-                                                    {product.category?.map(
-                                                        (category, idx) => (
-                                                            <span
-                                                                key={idx}
-                                                                className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground"
-                                                            >
-                                                                #{category.name}
-                                                            </span>
-                                                        ),
-                                                    )}
-                                                </div>
-                                                <h3 className="font-semibold text-sm line-clamp-2 group-hover:text-primary transition-colors">
-                                                    {product.name}
-                                                </h3>
-                                            </div>
+                                return (
+                                    <Link href={productDetail(product.id)}>
+                                        <Card
+                                            key={product.id}
+                                            className="group overflow-hidden rounded-2xl border-border bg-card shadow-sm hover:shadow-md transition-all duration-300 flex flex-col gap-0 p-0"
+                                        >
+                                            <div className="relative aspect-square overflow-hidden bg-muted">
+                                                <img
+                                                    src={product.image}
+                                                    alt={product.name}
+                                                    className={`object-cover w-full h-full group-hover:scale-105 transition-transform duration-500 ${
+                                                        isOutOfStock
+                                                            ? "opacity-60"
+                                                            : ""
+                                                    }`}
+                                                />
 
-                                            <div className="pt-2 border-t border-border flex items-center justify-between">
-                                                <div>
-                                                    <div className="text-base font-extrabold text-primary">
-                                                        {formatRupiah(
-                                                            product.price,
-                                                        )}
-                                                    </div>
-                                                    {product.originalPrice && (
-                                                        <div className="text-xs text-muted-foreground line-through">
-                                                            {formatRupiah(
-                                                                product.originalPrice,
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </div>
+                                                <Badge className="absolute top-3 left-3 bg-destructive text-destructive-foreground font-bold text-[11px] px-2 py-0.5 rounded-full shadow-sm">
+                                                    {product.discountPercentage
+                                                        ? `-${product.discountPercentage}%`
+                                                        : product.originalPrice
+                                                          ? `Hemat ${formatRupiah(product.originalPrice - product.price)}`
+                                                          : "SALE"}
+                                                </Badge>
+
+                                                {isOutOfStock && (
+                                                    <Badge
+                                                        variant="secondary"
+                                                        className="absolute bottom-3 left-3 text-[10px] font-bold"
+                                                    >
+                                                        Stok Habis
+                                                    </Badge>
+                                                )}
+
                                                 <Button
+                                                    variant="ghost"
                                                     size="icon"
-                                                    className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 h-9 w-9"
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        toggleWishlist(
+                                                            product.id,
+                                                        );
+                                                    }}
+                                                    className="absolute top-3 right-3 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background text-foreground h-8 w-8"
                                                 >
-                                                    <Plus className="h-5 w-5" />
+                                                    <Heart
+                                                        className={`h-4 w-4 transition-colors ${
+                                                            isWishlisted(
+                                                                product.id,
+                                                            )
+                                                                ? "fill-rose-500 text-rose-500"
+                                                                : "text-foreground"
+                                                        }`}
+                                                    />
                                                 </Button>
                                             </div>
-                                        </CardContent>
-                                    </Card>
-                                </Link>
-                            ))}
+
+                                            <CardContent className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                                                <div>
+                                                    <div className="flex flex-wrap gap-1 mb-1.5">
+                                                        {product.category?.map(
+                                                            (cat) => (
+                                                                <span
+                                                                    key={cat.id}
+                                                                    className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground"
+                                                                >
+                                                                    #{cat.name}
+                                                                </span>
+                                                            ),
+                                                        )}
+                                                    </div>
+
+                                                    <Link
+                                                        href={`/product/${product.id}`}
+                                                    >
+                                                        <h3 className="font-semibold text-sm line-clamp-2 group-hover:text-primary transition-colors">
+                                                            {product.name}
+                                                        </h3>
+                                                    </Link>
+                                                </div>
+
+                                                <div className="pt-2 border-t border-border flex items-center justify-between gap-2">
+                                                    <div>
+                                                        <div className="text-base font-extrabold text-foreground">
+                                                            {formatRupiah(
+                                                                product.price,
+                                                            )}
+                                                        </div>
+                                                        {product.originalPrice &&
+                                                            product.originalPrice >
+                                                                product.price && (
+                                                                <div className="text-xs text-muted-foreground line-through">
+                                                                    {formatRupiah(
+                                                                        product.originalPrice,
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                    </div>
+
+                                                    <Button
+                                                        type="button"
+                                                        size="icon"
+                                                        disabled={isOutOfStock}
+                                                        onClick={() =>
+                                                            setCartCount(
+                                                                (c) => c + 1,
+                                                            )
+                                                        }
+                                                        className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 h-9 w-9 shrink-0"
+                                                    >
+                                                        <Plus className="h-5 w-5" />
+                                                        <span className="sr-only">
+                                                            Tambah ke keranjang
+                                                        </span>
+                                                    </Button>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    </Link>
+                                );
+                            })}
                         </div>
                     </section>
                 )}
@@ -348,84 +412,140 @@ export default function StorefrontHome({
                     ) : (
                         /* GRID PRODUK NORMAL KETIKA DATA ADA */
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                            {products.map((product) => (
-                                <Link href={productDetail(product.id).url}>
-                                    <Card
-                                        key={product.id}
-                                        className="group overflow-hidden rounded-2xl border-border bg-card shadow-sm hover:shadow-md transition-all duration-300 flex flex-col gap-0 p-0"
-                                    >
-                                        <div className="relative aspect-square overflow-hidden bg-muted">
-                                            <img
-                                                src={product.image}
-                                                alt={product.name}
-                                                className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
-                                            />
-                                            {product.isOnSale && (
-                                                <Badge className="absolute top-3 left-3 bg-destructive text-destructive-foreground font-bold text-[11px] px-2 py-0.5 rounded-full shadow-sm">
-                                                    {product.discountPercentage
-                                                        ? `-${product.discountPercentage}%`
-                                                        : product.originalPrice
-                                                        ? `Hemat ${formatRupiah(product.originalPrice - product.price)}`
-                                                        : "SALE"}
-                                                </Badge>
-                                            )}
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="absolute top-3 right-3 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background text-foreground h-8 w-8"
-                                            >
-                                                <Heart className="h-4 w-4" />
-                                            </Button>
-                                        </div>
+                            {products.map((product) => {
+                                const hasSale =
+                                    Boolean(product.isOnSale) ||
+                                    Boolean(
+                                        product.originalPrice &&
+                                        product.originalPrice > product.price,
+                                    );
+                                const isOutOfStock =
+                                    typeof product.stock === "number" &&
+                                    product.stock <= 0;
 
-                                        <CardContent className="p-4 flex-1 flex flex-col justify-between space-y-3">
-                                            <div>
-                                                <div className="flex flex-wrap gap-1 mb-1.5">
-                                                    {product.category?.map(
-                                                        (category, idx) => (
-                                                            <span
-                                                                key={idx}
-                                                                className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground"
-                                                            >
-                                                                #{category.name}
-                                                            </span>
-                                                        ),
-                                                    )}
-                                                </div>
+                                return (
+                                    <Link href={productDetail(product.id)}>
+                                        <Card
+                                            key={product.id}
+                                            className="group overflow-hidden rounded-2xl border-border bg-card shadow-sm hover:shadow-md transition-all duration-300 flex flex-col gap-0 p-0"
+                                        >
+                                            <div className="relative aspect-square overflow-hidden bg-muted">
+                                                <img
+                                                    src={product.image}
+                                                    alt={product.name}
+                                                    className={`object-cover w-full h-full group-hover:scale-105 transition-transform duration-500 ${
+                                                        isOutOfStock
+                                                            ? "opacity-60"
+                                                            : ""
+                                                    }`}
+                                                />
 
-                                                <h3 className="font-semibold text-sm line-clamp-2 group-hover:text-primary transition-colors">
-                                                    {product.name}
-                                                </h3>
-                                            </div>
+                                                {hasSale && (
+                                                    <Badge className="absolute top-3 left-3 bg-destructive text-destructive-foreground font-bold text-[11px] px-2 py-0.5 rounded-full shadow-sm">
+                                                        {product.discountPercentage
+                                                            ? `-${product.discountPercentage}%`
+                                                            : product.originalPrice
+                                                              ? `Hemat ${formatRupiah(product.originalPrice - product.price)}`
+                                                              : "SALE"}
+                                                    </Badge>
+                                                )}
 
-                                            <div className="pt-2 border-t border-border flex items-center justify-between">
-                                                <div>
-                                                    <div className="text-base font-extrabold text-foreground">
-                                                        {formatRupiah(
-                                                            product.price,
-                                                        )}
-                                                    </div>
-                                                    {product.originalPrice &&
-                                                        product.originalPrice >
-                                                            product.price && (
-                                                            <div className="text-xs text-muted-foreground line-through">
-                                                                {formatRupiah(
-                                                                    product.originalPrice,
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                </div>
+                                                {isOutOfStock && (
+                                                    <Badge
+                                                        variant="secondary"
+                                                        className="absolute bottom-3 left-3 text-[10px] font-bold"
+                                                    >
+                                                        Stok Habis
+                                                    </Badge>
+                                                )}
+
                                                 <Button
+                                                    variant="ghost"
                                                     size="icon"
-                                                    className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 h-9 w-9"
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        toggleWishlist(
+                                                            product.id,
+                                                        );
+                                                    }}
+                                                    className="absolute top-3 right-3 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background text-foreground h-8 w-8"
                                                 >
-                                                    <Plus className="h-5 w-5" />
+                                                    <Heart
+                                                        className={`h-4 w-4 transition-colors ${
+                                                            isWishlisted(
+                                                                product.id,
+                                                            )
+                                                                ? "fill-rose-500 text-rose-500"
+                                                                : "text-foreground"
+                                                        }`}
+                                                    />
                                                 </Button>
                                             </div>
-                                        </CardContent>
-                                    </Card>
-                                </Link>
-                            ))}
+
+                                            <CardContent className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                                                <div>
+                                                    <div className="flex flex-wrap gap-1 mb-1.5">
+                                                        {product.category?.map(
+                                                            (cat) => (
+                                                                <span
+                                                                    key={cat.id}
+                                                                    className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground"
+                                                                >
+                                                                    #{cat.name}
+                                                                </span>
+                                                            ),
+                                                        )}
+                                                    </div>
+
+                                                    <Link
+                                                        href={`/product/${product.id}`}
+                                                    >
+                                                        <h3 className="font-semibold text-sm line-clamp-2 group-hover:text-primary transition-colors">
+                                                            {product.name}
+                                                        </h3>
+                                                    </Link>
+                                                </div>
+
+                                                <div className="pt-2 border-t border-border flex items-center justify-between gap-2">
+                                                    <div>
+                                                        <div className="text-base font-extrabold text-foreground">
+                                                            {formatRupiah(
+                                                                product.price,
+                                                            )}
+                                                        </div>
+                                                        {product.originalPrice &&
+                                                            product.originalPrice >
+                                                                product.price && (
+                                                                <div className="text-xs text-muted-foreground line-through">
+                                                                    {formatRupiah(
+                                                                        product.originalPrice,
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                    </div>
+
+                                                    <Button
+                                                        type="button"
+                                                        size="icon"
+                                                        disabled={isOutOfStock}
+                                                        onClick={() =>
+                                                            setCartCount(
+                                                                (c) => c + 1,
+                                                            )
+                                                        }
+                                                        className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 h-9 w-9 shrink-0"
+                                                    >
+                                                        <Plus className="h-5 w-5" />
+                                                        <span className="sr-only">
+                                                            Tambah ke keranjang
+                                                        </span>
+                                                    </Button>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    </Link>
+                                );
+                            })}
                         </div>
                     )}
                 </section>

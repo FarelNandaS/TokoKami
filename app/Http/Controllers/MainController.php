@@ -87,6 +87,10 @@ class MainController extends Controller
                 }
             }
 
+            $totalStock = $product->variants->count() > 0
+                    ? $product->variants->sum('stock')
+                    : ($product->stock ?? 0);
+
             return [
                 'id' => $product->id,
                 'name' => $product->name,
@@ -96,6 +100,7 @@ class MainController extends Controller
                 'originalPrice' => $originalPrice,
                 'discountPercentage' => $discountPercentage,
                 'isOnSale' => $isOnSale,
+                'stock' => $totalStock,
                 'category' => $category,
             ];
         });
@@ -263,9 +268,10 @@ class MainController extends Controller
         ]);
     }
 
-    public function productCatalog()
+    public function productCatalog(Request $request)
     {
         $now = Carbon::now();
+        $search = trim((string) $request->query('search', ''));
 
         $activeSales = ProductSale::with('variant')
             ->where(function ($q) use ($now) {
@@ -277,13 +283,25 @@ class MainController extends Controller
             ->get()
             ->groupBy('product_id');
 
-        $products = Product::with([
+        $productsQuery = Product::with([
             'images' => function ($query) {
                 $query->where('is_primary', true);
             },
             'categories',
             'variants',
-        ])->latest()->get();
+        ])->latest();
+
+        if ($search !== '') {
+            $productsQuery->where(function ($query) use ($search) {
+                $query->where('name', 'like', '%' . $search . '%')
+                    ->orWhere('description', 'like', '%' . $search . '%')
+                    ->orWhereHas('categories', function ($catQuery) use ($search) {
+                        $catQuery->where('name', 'like', '%' . $search . '%');
+                    });
+            });
+        }
+
+        $products = $productsQuery->get();
 
         $formattedProducts = $products->map(function ($product) use ($activeSales) {
             $coverImage = $product->images->first();
@@ -324,6 +342,10 @@ class MainController extends Controller
                 }
             }
 
+            $totalStock = $product->variants->count() > 0
+                    ? $product->variants->sum('stock')
+                    : ($product->stock ?? 0);
+
             return [
                 'id' => $product->id,
                 'name' => $product->name,
@@ -333,6 +355,7 @@ class MainController extends Controller
                 'originalPrice' => $originalPrice,
                 'discountPercentage' => $discountPercentage,
                 'isOnSale' => $isOnSale,
+                'stock' => $totalStock,
                 'category' => $product->categories,
             ];
         });
@@ -406,6 +429,10 @@ class MainController extends Controller
                 }
             }
 
+            $totalStock = $product->variants->count() > 0
+                    ? $product->variants->sum('stock')
+                    : ($product->stock ?? 0);
+
             return [
                 'id' => $product->id,
                 'name' => $product->name,
@@ -415,6 +442,7 @@ class MainController extends Controller
                 'originalPrice' => $originalPrice,
                 'discountPercentage' => $discountPercentage,
                 'isOnSale' => $isOnSale,
+                'stock' => $totalStock,
                 'category' => $product->categories,
             ];
         })->filter(fn($item) => $item['isOnSale'])->values();
@@ -424,6 +452,113 @@ class MainController extends Controller
         return Inertia::render('productPromo', [
             'products' => $promoProducts,
             'categories' => $categories,
+        ]);
+    }
+
+    public function wishlist(Request $request)
+    {
+        $idsParam = (string) $request->query('ids', '');
+        $ids = collect(explode(',', $idsParam))
+            ->map(fn($id) => (int) trim($id))
+            ->filter(fn($id) => $id > 0)
+            ->unique()
+            ->values();
+
+        if ($ids->isEmpty()) {
+            return Inertia::render('wishlist', [
+                'products' => [],
+            ]);
+        }
+
+        $now = Carbon::now();
+
+        $activeSales = ProductSale::with('variant')
+            ->whereIn('product_id', $ids)
+            ->where(function ($q) use ($now) {
+                $q->whereNull('start_sale')->orWhere('start_sale', '<=', $now);
+            })
+            ->where(function ($q) use ($now) {
+                $q->whereNull('end_sale')->orWhere('end_sale', '>=', $now);
+            })
+            ->get()
+            ->groupBy('product_id');
+
+        $products = Product::with([
+            'images' => function ($query) {
+                $query->where('is_primary', true);
+            },
+            'categories',
+            'variants',
+        ])
+            ->whereIn('id', $ids)
+            ->get();
+
+        // Pertahankan urutan sesuai yang tersimpan di wishlist user
+        $productsById = $products->keyBy('id');
+
+        $formattedProducts = $ids
+            ->map(fn($id) => $productsById->get($id))
+            ->filter()
+            ->map(function ($product) use ($activeSales) {
+                $coverImage = $product->images->first();
+                $salesForProduct = $activeSales->get($product->id, collect());
+
+                $displayPrice = (int) $product->price;
+                $originalPrice = null;
+                $discountPercentage = null;
+                $isOnSale = false;
+
+                if ($salesForProduct->isNotEmpty()) {
+                    $bestSale = $salesForProduct
+                        ->map(function ($sale) use ($product) {
+                            $normalPrice = (int) ($sale->variant?->price ?? $product->price);
+                            $salePrice = (int) $sale->sale_price;
+
+                            $percent = $sale->discount_percentage !== null
+                                ? (int) round((float) $sale->discount_percentage)
+                                : ($normalPrice > 0 && $salePrice < $normalPrice
+                                    ? (int) round((($normalPrice - $salePrice) / $normalPrice) * 100)
+                                    : 0);
+
+                            return [
+                                'normal_price' => $normalPrice,
+                                'sale_price' => $salePrice,
+                                'percent' => $percent,
+                            ];
+                        })
+                        ->filter(fn($item) => $item['sale_price'] < $item['normal_price'])
+                        ->sortBy('sale_price')
+                        ->first();
+
+                    if ($bestSale) {
+                        $isOnSale = true;
+                        $displayPrice = $bestSale['sale_price'];
+                        $originalPrice = $bestSale['normal_price'];
+                        $discountPercentage = $bestSale['percent'] > 0 ? $bestSale['percent'] : null;
+                    }
+                }
+
+                $totalStock = $product->variants->count() > 0
+                    ? $product->variants->sum('stock')
+                    : ($product->stock ?? 0);
+
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'description' => $product->description,
+                    'price' => $displayPrice,
+                    'image' => $coverImage ? '/storage/' . $coverImage->image_path : '/images/placeholder.jpg',
+                    'originalPrice' => $originalPrice,
+                    'discountPercentage' => $discountPercentage,
+                    'isOnSale' => $isOnSale,
+                    'stock' => (int) $totalStock,
+                    'category' => $product->categories,
+                ];
+            })
+            ->values();
+
+        return Inertia::render('wishlist', [
+            'products' => $formattedProducts,
         ]);
     }
 

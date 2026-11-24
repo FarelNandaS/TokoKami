@@ -23,6 +23,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { productDetail } from "@/routes";
+import { useWishlist } from "@/hooks/use-whislist";
 
 interface Category {
     id: number;
@@ -39,6 +40,7 @@ interface CatalogProductItem {
     originalPrice?: number | null;
     discountPercentage?: number | null;
     isOnSale?: boolean;
+    stock?: number;
     category: Category[];
     created_at?: string;
 }
@@ -64,6 +66,8 @@ export default function ProductsCatalog({
     const [promoOnly, setPromoOnly] = useState<boolean>(onlyPromo);
     const [sortBy, setSortBy] = useState<SortOption>("latest");
     const [cartCount, setCartCount] = useState(2);
+
+    const { isWishlisted, toggleWishlist } = useWishlist();
 
     const formatRupiah = (amount: number) => {
         return new Intl.NumberFormat("id-ID", {
@@ -345,6 +349,9 @@ export default function ProductsCatalog({
                                         product.originalPrice &&
                                         product.originalPrice > product.price,
                                     );
+                                const isOutOfStock =
+                                    typeof product.stock === "number" &&
+                                    product.stock <= 0;
 
                                 return (
                                     <Link href={productDetail(product.id)}>
@@ -356,7 +363,11 @@ export default function ProductsCatalog({
                                                 <img
                                                     src={product.image}
                                                     alt={product.name}
-                                                    className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
+                                                    className={`object-cover w-full h-full group-hover:scale-105 transition-transform duration-500 ${
+                                                        isOutOfStock
+                                                            ? "opacity-60"
+                                                            : ""
+                                                    }`}
                                                 />
 
                                                 {hasSale && (
@@ -369,16 +380,35 @@ export default function ProductsCatalog({
                                                     </Badge>
                                                 )}
 
+                                                {isOutOfStock && (
+                                                    <Badge
+                                                        variant="secondary"
+                                                        className="absolute bottom-3 left-3 text-[10px] font-bold"
+                                                    >
+                                                        Stok Habis
+                                                    </Badge>
+                                                )}
+
                                                 <Button
-                                                    type="button"
                                                     variant="ghost"
                                                     size="icon"
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        toggleWishlist(
+                                                            product.id,
+                                                        );
+                                                    }}
                                                     className="absolute top-3 right-3 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background text-foreground h-8 w-8"
                                                 >
-                                                    <Heart className="h-4 w-4" />
-                                                    <span className="sr-only">
-                                                        Simpan ke wishlist
-                                                    </span>
+                                                    <Heart
+                                                        className={`h-4 w-4 transition-colors ${
+                                                            isWishlisted(
+                                                                product.id,
+                                                            )
+                                                                ? "fill-rose-500 text-rose-500"
+                                                                : "text-foreground"
+                                                        }`}
+                                                    />
                                                 </Button>
                                             </div>
 
@@ -398,7 +428,7 @@ export default function ProductsCatalog({
                                                     </div>
 
                                                     <Link
-                                                        href={`/products/${product.id}`}
+                                                        href={`/product/${product.id}`}
                                                     >
                                                         <h3 className="font-semibold text-sm line-clamp-2 group-hover:text-primary transition-colors">
                                                             {product.name}
@@ -427,6 +457,7 @@ export default function ProductsCatalog({
                                                     <Button
                                                         type="button"
                                                         size="icon"
+                                                        disabled={isOutOfStock}
                                                         onClick={() =>
                                                             setCartCount(
                                                                 (c) => c + 1,

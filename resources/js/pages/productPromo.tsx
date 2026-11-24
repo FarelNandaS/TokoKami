@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { SelectValue } from "@radix-ui/react-select";
 import { productDetail } from "@/routes";
+import { useWishlist } from "@/hooks/use-whislist";
 
 interface Category {
     id: number;
@@ -39,6 +40,7 @@ interface PromoProductItem {
     originalPrice?: number | null;
     discountPercentage?: number | null;
     isOnSale?: boolean;
+    stock?: number;
     category: Category[];
 }
 
@@ -57,6 +59,8 @@ export default function ProductsPromo({
     const [selectedCategory, setSelectedCategory] = useState<string>("all");
     const [sortBy, setSortBy] = useState<PromoSortOption>("discount");
     const [cartCount, setCartCount] = useState(2);
+
+    const { isWishlisted, toggleWishlist } = useWishlist();
 
     // Drag-to-scroll horizontal untuk bar kategori
     const categoryScrollRef = useRef<HTMLDivElement | null>(null);
@@ -328,11 +332,9 @@ export default function ProductsPromo({
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                             {filteredProducts.map((product) => {
-                                const savedAmount =
-                                    product.originalPrice &&
-                                    product.originalPrice > product.price
-                                        ? product.originalPrice - product.price
-                                        : null;
+                                const isOutOfStock =
+                                    typeof product.stock === "number" &&
+                                    product.stock <= 0;
 
                                 return (
                                     <Link href={productDetail(product.id)}>
@@ -344,27 +346,50 @@ export default function ProductsPromo({
                                                 <img
                                                     src={product.image}
                                                     alt={product.name}
-                                                    className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
+                                                    className={`object-cover w-full h-full group-hover:scale-105 transition-transform duration-500 ${
+                                                        isOutOfStock
+                                                            ? "opacity-60"
+                                                            : ""
+                                                    }`}
                                                 />
 
                                                 <Badge className="absolute top-3 left-3 bg-destructive text-destructive-foreground font-bold text-[11px] px-2 py-0.5 rounded-full shadow-sm">
                                                     {product.discountPercentage
                                                         ? `-${product.discountPercentage}%`
-                                                        : savedAmount
-                                                        ? `Hemat ${formatRupiah(savedAmount)}`
-                                                        : "PROMO"}
+                                                        : product.originalPrice
+                                                          ? `Hemat ${formatRupiah(product.originalPrice - product.price)}`
+                                                          : "SALE"}
                                                 </Badge>
 
+                                                {isOutOfStock && (
+                                                    <Badge
+                                                        variant="secondary"
+                                                        className="absolute bottom-3 left-3 text-[10px] font-bold"
+                                                    >
+                                                        Stok Habis
+                                                    </Badge>
+                                                )}
+
                                                 <Button
-                                                    type="button"
                                                     variant="ghost"
                                                     size="icon"
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        toggleWishlist(
+                                                            product.id,
+                                                        );
+                                                    }}
                                                     className="absolute top-3 right-3 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background text-foreground h-8 w-8"
                                                 >
-                                                    <Heart className="h-4 w-4" />
-                                                    <span className="sr-only">
-                                                        Simpan ke wishlist
-                                                    </span>
+                                                    <Heart
+                                                        className={`h-4 w-4 transition-colors ${
+                                                            isWishlisted(
+                                                                product.id,
+                                                            )
+                                                                ? "fill-rose-500 text-rose-500"
+                                                                : "text-foreground"
+                                                        }`}
+                                                    />
                                                 </Button>
                                             </div>
 
@@ -394,7 +419,7 @@ export default function ProductsPromo({
 
                                                 <div className="pt-2 border-t border-border flex items-center justify-between gap-2">
                                                     <div>
-                                                        <div className="text-base font-extrabold text-primary">
+                                                        <div className="text-base font-extrabold text-foreground">
                                                             {formatRupiah(
                                                                 product.price,
                                                             )}
@@ -413,6 +438,7 @@ export default function ProductsPromo({
                                                     <Button
                                                         type="button"
                                                         size="icon"
+                                                        disabled={isOutOfStock}
                                                         onClick={() =>
                                                             setCartCount(
                                                                 (c) => c + 1,
