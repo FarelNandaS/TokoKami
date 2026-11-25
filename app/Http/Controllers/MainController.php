@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Banner;
 use App\Models\Category;
+use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductImage;
 use App\Models\ProductSale;
@@ -12,6 +13,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class MainController extends Controller
@@ -558,8 +560,8 @@ class MainController extends Controller
                     : ($product->stock ?? 0);
 
                 $hasVariants = $product->variants->count() > 0
-                ? true
-                : false;
+                    ? true
+                    : false;
 
                 return [
                     'id' => $product->id,
@@ -738,6 +740,201 @@ class MainController extends Controller
         ]);
     }
 
+    public function checkout(Request $request)
+    {
+        $rawItems = $request->query('items', '');
+        $decoded = is_string($rawItems) && $rawItems !== ''
+            ? json_decode($rawItems, true)
+            : [];
+
+        $requestedItems = collect(is_array($decoded) ? $decoded : [])
+            ->map(function ($row) {
+                $productId = isset($row['productId']) ? (int) $row['productId'] : 0;
+                $variantId = isset($row['variantId']) && $row['variantId'] !== null && $row['variantId'] !== ''
+                    ? (int) $row['variantId']
+                    : null;
+                $quantity = isset($row['quantity']) ? max(1, (int) $row['quantity']) : 1;
+
+                return [
+                    'productId' => $productId,
+                    'variantId' => $variantId,
+                    'quantity' => $quantity,
+                ];
+            })
+            ->filter(fn($row) => $row['productId'] > 0)
+            ->values();
+
+        if ($requestedItems->isEmpty()) {
+            return Inertia::render('checkout', [
+                'checkoutItems' => [],
+                'shippingCost' => 0,
+            ]);
+        }
+
+        $productIds = $requestedItems->pluck('productId')->unique()->values();
+        $now = Carbon::now();
+        $activeSales = ProductSale::whereIn('product_id', $productIds)
+            ->where(function ($q) use ($now) {
+                $q->whereNull('start_sale')->orWhere('start_sale', '<=', $now);
+            })
+            ->where(function ($q) use ($now) {
+                $q->whereNull('end_sale')->orWhere('end_sale', '>=', $now);
+            })
+            ->get()
+            ->groupBy('product_id');
+
+        $products = Product::with([
+            'images' => function ($query) {
+                $query->where('is_primary', true);
+            },
+            'variants.attributeValues.attribute',
+        ])
+            ->whereIn('id', $productIds)
+            ->get()
+            ->keyBy('id');
+
+        $resolveSaleInfo = function (int $normalPrice, ?ProductSale $sale): array {
+            if ($sale && (int) $sale->sale_price < $normalPrice) {
+                $salePrice = (int) $sale->sale_price;
+                $percent = $sale->discount_percentage !== null
+                    ? (int) round((float) $sale->discount_percentage)
+                    : ($normalPrice > 0
+                        ? (int) round((($normalPrice - $salePrice) / $normalPrice) * 100)
+                        : 0);
+
+                return [
+                    'price' => $salePrice,
+                    'originalPrice' => $normalPrice,
+                    'discountPercentage' => max(0, $percent),
+                    'isOnSale' => true,
+                ];
+            }
+
+            return [
+                'price' => $normalPrice,
+                'originalPrice' => null,
+                'discountPercentage' => 0,
+                'isOnSale' => false,
+            ];
+        };
+
+        $checkoutItems = $requestedItems
+            ->map(function ($req) use ($products, $activeSales, $resolveSaleInfo) {
+                $product = $products->get($req['productId']);
+                if (!$product) {
+                    return null;
+                }
+
+                $salesForProduct = $activeSales->get($product->id, collect());
+                $productLevelSale = $salesForProduct->firstWhere('product_variant_id', null);
+                $variantSalesMap = $salesForProduct->whereNotNull('product_variant_id')->keyBy('product_variant_id');
+
+                $variant = null;
+                $variantId = null;
+                $variantLabel = null;
+
+                if ($product->variants->isNotEmpty()) {
+                    $variant = $req['variantId']
+                        ? $product->variants->firstWhere('id', $req['variantId'])
+                        : $product->variants->first();
+
+                    if (!$variant) {
+                        return null;
+                    }
+
+                    $variantId = (int) $variant->id;
+                    $combination = $variant->attributeValues
+                        ->pluck('value')
+                        ->filter()
+                        ->join(' / ');
+                    $variantLabel = $combination !== '' ? $combination : ($variant->sku ?? "Varian #{$variant->id}");
+                }
+
+                $normalPrice = (int) ($variant?->price ?? $product->price);
+                $matchedSale = $variantId !== null
+                    ? ($variantSalesMap->get($variantId) ?? $productLevelSale)
+                    : $productLevelSale;
+                $saleInfo = $resolveSaleInfo($normalPrice, $matchedSale);
+
+                $stock = $variant
+                    ? (int) ($variant->stock ?? 0)
+                    : (int) ($product->stock ?? 0);
+
+                $coverImage = $product->images->first();
+
+                return [
+                    'productId' => (int) $product->id,
+                    'variantId' => $variantId,
+                    'variantLabel' => $variantLabel,
+                    'name' => $product->name,
+                    'image' => $coverImage ? '/storage/' . $coverImage->image_path : '/images/placeholder.jpg',
+                    'price' => $saleInfo['price'],
+                    'originalPrice' => $saleInfo['originalPrice'],
+                    'discountPercentage' => $saleInfo['discountPercentage'],
+                    'isOnSale' => $saleInfo['isOnSale'],
+                    'quantity' => $req['quantity'],
+                    'stock' => $stock,
+                ];
+            })
+            ->filter()
+            ->values();
+
+        return Inertia::render('checkout', [
+            'checkoutItems' => $checkoutItems,
+            'shippingCost' => 0, // Bisa disesuaikan dengan aturan ongkir toko
+        ]);
+    }
+
+    public function track($token)
+    {
+        $order = Order::with('items')
+            ->where('tracking_token', $token)
+            ->firstOrFail();
+
+        return Inertia::render('orderTrack', [
+            'order' => [
+                'id' => $order->id,
+                'order_code' => $order->order_code,
+                'tracking_token' => $order->tracking_token,
+                'customer_name' => $order->customer_name,
+                'customer_email' => $order->customer_email,
+                'customer_phone' => $order->customer_phone,
+                'shipping_address' => $order->shipping_address,
+                'shipping_city' => $order->shipping_city,
+                'shipping_postal_code' => $order->shipping_postal_code,
+                'notes' => $order->notes,
+                'subtotal' => (int) $order->subtotal,
+                'shipping_cost' => (int) $order->shipping_cost,
+                'total_amount' => (int) $order->total_amount,
+                'payment_method' => $order->payment_method,
+                'payment_status' => $order->payment_status,
+                'payment_proof_url' => $order->payment_proof_path
+                    ? Storage::url($order->payment_proof_path)
+                    : null,
+                'order_status' => $order->order_status,
+                'courier_name' => $order->courier_name,
+                'tracking_number' => $order->tracking_number,
+                'admin_notes' => $order->admin_notes,
+                'created_at' => $order->created_at?->toIso8601String(),
+                'items' => $order->items->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'product_id' => $item->product_id,
+                        'product_variant_id' => $item->product_variant_id,
+                        'product_name' => $item->product_name,
+                        'variant_label' => $item->variant_label,
+                        'unit_price' => (int) $item->unit_price,
+                        'original_unit_price' => $item->original_unit_price !== null
+                            ? (int) $item->original_unit_price
+                            : null,
+                        'quantity' => (int) $item->quantity,
+                        'line_total' => (int) $item->line_total,
+                    ];
+                })->values(),
+            ],
+        ]);
+    }
+
     // Controller Admin 
     public function dashboard()
     {
@@ -858,6 +1055,54 @@ class MainController extends Controller
         return Inertia::render('admin/saleManagement', [
             'saleProducts' => $saleProducts,
             'products' => $products,
+        ]);
+    }
+
+    public function orderManagement()
+    {
+        $query = Order::with('items')->latest();
+
+        $orders = $query->get()->map(function ($order) {
+            return [
+                'id' => $order->id,
+                'order_code' => $order->order_code,
+                'tracking_token' => $order->tracking_token,
+                'customer_name' => $order->customer_name,
+                'customer_email' => $order->customer_email,
+                'customer_phone' => $order->customer_phone,
+                'shipping_address' => $order->shipping_address,
+                'shipping_city' => $order->shipping_city,
+                'shipping_postal_code' => $order->shipping_postal_code,
+                'notes' => $order->notes,
+                'subtotal' => (int) $order->subtotal,
+                'shipping_cost' => (int) $order->shipping_cost,
+                'total_amount' => (int) $order->total_amount,
+                'payment_method' => $order->payment_method,
+                'payment_status' => $order->payment_status,
+                'payment_proof_url' => $order->payment_proof_path
+                    ? Storage::url($order->payment_proof_path)
+                    : null,
+                'order_status' => $order->order_status,
+                'courier_name' => $order->courier_name,
+                'tracking_number' => $order->tracking_number,
+                'admin_notes' => $order->admin_notes,
+                'created_at' => $order->created_at?->format('d M Y H:i'),
+                'items_count' => $order->items->sum('quantity'),
+                'items' => $order->items->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'product_name' => $item->product_name,
+                        'variant_label' => $item->variant_label,
+                        'unit_price' => (int) $item->unit_price,
+                        'quantity' => (int) $item->quantity,
+                        'line_total' => (int) $item->line_total,
+                    ];
+                })->values(),
+            ];
+        })->values();
+
+        return Inertia::render('admin/orderManagement', [
+            'orders' => $orders,
         ]);
     }
 

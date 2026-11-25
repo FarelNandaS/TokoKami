@@ -3,6 +3,7 @@
 use App\Http\Controllers\BannerController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\MainController;
+use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\UserController;
@@ -14,6 +15,10 @@ Route::get('/product/{id}', [MainController::class, 'productDetail'])->name('pro
 Route::get('/promo', [MainController::class, 'promo'])->name('promo');
 Route::get('/wishlist', [MainController::class, 'wishlist'])->name('wishlish');
 Route::get('/cart', [MainController::class, 'cart'])->name('cart');
+Route::get('/checkout', [MainController::class, 'checkout'])->name('checkout');
+Route::post('/checkout', [OrderController::class, 'order'])->name('order');
+Route::get('/order/track/{token}', [MainController::class, 'track'])->name('order-track');
+Route::post('/order/track/{token}/payment-proof', [OrderController::class, 'uploadPaymentProof'])->name('upload-payment-proof');
 
 Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
     //dashboar routes
@@ -60,6 +65,14 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
 
         Route::post('create-sale', [SaleController::class, 'createSale'])->name('create-sale');
         Route::delete('delete-sale', [SaleController::class, 'deleteSale'])->name('delete-sale');
+    });
+
+    //Order Management routes
+    Route::middleware(['permission:Sale Management'])->group(function () {
+        Route::get('order-management', [MainController::class, 'orderManagement'])->name('order-management');
+
+        Route::patch('orders/{order}/payment-status', [OrderController::class, 'updatePaymentStatus'])->name('update-payment-status');
+        Route::patch('orders/{order}/status', [OrderController::class, 'updateStatus'])->name('update-status');
     });
 
     //User / Admin management routes

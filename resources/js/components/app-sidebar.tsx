@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { BadgePercent, Boxes, Image, LayoutGrid, Package, Tags, Users, Zap } from 'lucide-react';
+import { BadgePercent, Boxes, Image, LayoutGrid, Package, Package2, Tags, Users, Zap } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -12,7 +12,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { adminManagement, bannerSlider, categoryManagement, dashboard, home, productManagement, saleManagement, stockManagement } from '@/routes';
+import { adminManagement, bannerSlider, categoryManagement, dashboard, home, orderManagement, productManagement, saleManagement, stockManagement } from '@/routes';
 import { typeNavGroups } from '@/types';
 
 const navGroups : typeNavGroups = [
@@ -65,6 +65,17 @@ const navGroups : typeNavGroups = [
                 permission: 'Sale Management'
             },
         ],
+    },
+    {
+        label: 'Costomer Relotionship Management',
+        items: [
+            {
+                title: 'Order',
+                href: orderManagement(),
+                icon: Package2,
+                permission: 'Sale Management',
+            }
+        ]
     },
     {
         label: 'Role-Base Access Control (RBAC)',
