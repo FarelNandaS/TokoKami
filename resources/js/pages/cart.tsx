@@ -152,19 +152,6 @@ export default function CartPage({ cartItems = [] }: CartPageProps) {
             <main className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full flex-1 space-y-6">
                 {/* Breadcrumb & Header */}
                 <div className="space-y-2">
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <Link
-                            href="/"
-                            className="hover:text-primary transition-colors"
-                        >
-                            Beranda
-                        </Link>
-                        <ChevronRight className="h-3.5 w-3.5" />
-                        <span className="text-foreground font-medium">
-                            Keranjang
-                        </span>
-                    </div>
-
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div>
                             <h1 className="text-2xl sm:text-3xl font-black tracking-tight flex items-center gap-2.5">
