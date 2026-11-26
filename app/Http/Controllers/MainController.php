@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductImage;
 use App\Models\ProductSale;
+use App\Models\ProductVariant;
 use App\Models\User;
 use App\Services\Payment\PaymentGatewayService;
 use Carbon\Carbon;
@@ -940,7 +941,124 @@ class MainController extends Controller
     // Controller Admin 
     public function dashboard()
     {
-        return Inertia::render('admin/dashboard');
+        $now = Carbon::now();
+
+        // 1. KPI Ringkasan Utama
+        $totalRevenue = (int) Order::where('payment_status', 'paid')->sum('total_amount');
+        $todayRevenue = (int) Order::where('payment_status', 'paid')
+            ->whereDate('created_at', $now->toDateString())
+            ->sum('total_amount');
+
+        $totalOrders = Order::count();
+        $actionNeededOrders = Order::whereIn('order_status', ['pending', 'confirmed', 'processing'])->count();
+
+        $totalProducts = Product::count();
+        $activePromos = ProductSale::where(function ($q) use ($now) {
+            $q->whereNull('start_sale')->orWhere('start_sale', '<=', $now);
+        })
+            ->where(function ($q) use ($now) {
+                $q->whereNull('end_sale')->orWhere('end_sale', '>=', $now);
+            })
+            ->count();
+
+        // 2. Grafik Pendapatan & Jumlah Order 7 Hari Terakhir
+        $startDate = $now->copy()->subDays(6)->startOfDay();
+        $ordersLast7Days = Order::where('created_at', '>=', $startDate)
+            ->get(['created_at', 'total_amount', 'payment_status', 'order_status']);
+
+        $dailyChart = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $date = $now->copy()->subDays($i);
+            $dateKey = $date->format('Y-m-d');
+
+            $dayOrders = $ordersLast7Days->filter(
+                fn($o) => $o->created_at && $o->created_at->format('Y-m-d') === $dateKey
+            );
+
+            $dailyChart[] = [
+                'date' => $date->translatedFormat('d M'),
+                'revenue' => (int) $dayOrders->where('payment_status', 'paid')->sum('total_amount'),
+                'orders' => $dayOrders->count(),
+            ];
+        }
+
+        // 3. 5 Pesanan Terbaru
+        $recentOrders = Order::withCount('items')
+            ->latest()
+            ->take(5)
+            ->get()
+            ->map(function ($order) {
+                return [
+                    'id' => $order->id,
+                    'order_code' => $order->order_code,
+                    'customer_name' => $order->customer_name,
+                    'total_amount' => (int) $order->total_amount,
+                    'payment_status' => $order->payment_status,
+                    'order_status' => $order->order_status,
+                    'items_count' => (int) ($order->items_count ?? 0),
+                    'created_at' => $order->created_at?->format('d M Y, H:i'),
+                ];
+            })
+            ->values();
+
+        // 4. Peringatan Stok Menipis (<= 5) untuk Produk Non-Varian & Varian
+        $lowStockThreshold = 5;
+        $lowStockItems = collect();
+
+        $singleProducts = Product::doesntHave('variants')
+            ->where('stock', '<=', $lowStockThreshold)
+            ->orderBy('stock', 'asc')
+            ->take(6)
+            ->get();
+
+        foreach ($singleProducts as $prod) {
+            $lowStockItems->push([
+                'id' => 'prod-' . $prod->id,
+                'name' => $prod->name,
+                'variant' => null,
+                'sku' => null,
+                'stock' => (int) ($prod->stock ?? 0),
+            ]);
+        }
+
+        $lowVariants = ProductVariant::with(['product', 'attributeValues'])
+            ->where('stock', '<=', $lowStockThreshold)
+            ->orderBy('stock', 'asc')
+            ->take(6)
+            ->get();
+
+        foreach ($lowVariants as $variant) {
+            if (!$variant->product) {
+                continue;
+            }
+            $label = $variant->attributeValues->pluck('value')->filter()->join(' / ');
+            $lowStockItems->push([
+                'id' => 'var-' . $variant->id,
+                'name' => $variant->product->name,
+                'variant' => $label !== '' ? $label : null,
+                'sku' => $variant->sku,
+                'stock' => (int) ($variant->stock ?? 0),
+            ]);
+        }
+
+        $lowStockList = $lowStockItems
+            ->sortBy('stock')
+            ->take(6)
+            ->values();
+
+        return Inertia::render('admin/dashboard', [
+            'stats' => [
+                'total_revenue' => $totalRevenue,
+                'today_revenue' => $todayRevenue,
+                'total_orders' => $totalOrders,
+                'action_needed_orders' => $actionNeededOrders,
+                'total_products' => $totalProducts,
+                'active_promos' => $activePromos,
+            ],
+            'dailyChart' => $dailyChart,
+            'recentOrders' => $recentOrders,
+            'lowStockList' => $lowStockList,
+        ]);
     }
 
     public function productManagement()

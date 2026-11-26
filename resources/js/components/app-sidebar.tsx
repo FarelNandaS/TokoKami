@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { BadgePercent, Boxes, Image, LayoutGrid, Package, Package2, Tags, Users, Zap } from 'lucide-react';
+import { BadgePercent, Boxes, Image, LayoutGrid, Package, Package2, ShoppingBag, Tags, Users, Zap } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -15,9 +15,9 @@ import {
 import { adminManagement, bannerSlider, categoryManagement, dashboard, home, orderManagement, productManagement, saleManagement, stockManagement } from '@/routes';
 import { typeNavGroups } from '@/types';
 
-const navGroups : typeNavGroups = [
+const navGroups: typeNavGroups = [
     {
-        label: 'Overview',
+        label: 'Ringkasan',
         items: [
             {
                 title: 'Dashboard',
@@ -27,13 +27,30 @@ const navGroups : typeNavGroups = [
         ],
     },
     {
-        label: 'Inventory (IMS)',
+        label: 'Transaksi & Penjualan',
         items: [
             {
-                title: 'Kelola Produk',
+                title: 'Pesanan',
+                href: orderManagement(),
+                icon: ShoppingBag,
+                permission: 'Order Management',
+            },
+        ],
+    },
+    {
+        label: 'Katalog & Inventaris',
+        items: [
+            {
+                title: 'Produk',
                 href: productManagement(),
                 icon: Package,
                 permission: 'Product Management',
+            },
+            {
+                title: 'Kategori & Tag',
+                href: categoryManagement(),
+                icon: Tags,
+                permission: 'Category Management',
             },
             {
                 title: 'Stok & Gudang',
@@ -41,52 +58,35 @@ const navGroups : typeNavGroups = [
                 icon: Boxes,
                 permission: 'Stock Management',
             },
-            {
-                title: 'Kategori & Tag',
-                href: categoryManagement(),
-                icon: Tags,
-                permission: 'Category Management'
-            },
         ],
     },
     {
-        label: 'Content & Marketing (CMS)',
+        label: 'Promosi & Etalase',
         items: [
             {
-                title: 'Banner Slider',
+                title: 'Promo & Diskon',
+                href: saleManagement(),
+                icon: BadgePercent,
+                permission: 'Sale Management',
+            },
+            {
+                title: 'Banner Toko',
                 href: bannerSlider(),
                 icon: Image,
                 permission: 'Banner Organize',
             },
-            {
-                title: 'Promosi Produk',
-                href: saleManagement(),
-                icon: BadgePercent,
-                permission: 'Sale Management'
-            },
         ],
     },
     {
-        label: 'Costomer Relotionship Management',
-        items: [
-            {
-                title: 'Order',
-                href: orderManagement(),
-                icon: Package2,
-                permission: 'Sale Management',
-            }
-        ]
-    },
-    {
-        label: 'Role-Base Access Control (RBAC)',
+        label: 'Pengaturan Sistem',
         items: [
             {
                 title: 'Kelola Admin',
                 href: adminManagement(),
                 icon: Users,
-                permission: 'Admin Management'
-            }
-        ]
+                permission: 'Admin Management',
+            },
+        ],
     },
 ];
 

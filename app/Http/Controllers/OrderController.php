@@ -281,4 +281,42 @@ class OrderController extends Controller
 
         return back();
     }
+
+    public function mockSimulate(Request $request, string $token, PaymentGatewayService $paymentGateway)
+    {
+        if (!$paymentGateway->isMockMode()) {
+            abort(403, 'Mode simulasi pembayaran tidak aktif.');
+        }
+
+        $validated = $request->validate([
+            'status' => ['required', 'in:paid,failed'],
+        ]);
+
+        $order = Order::where('tracking_token', $token)->firstOrFail();
+
+        $request->merge([
+            'order_code' => $order->order_code,
+            'status' => $validated['status'],
+        ]);
+
+        $paymentGateway->handleWebhook($request, 'mock');
+
+        return back()->with(
+            'success',
+            $validated['status'] === 'paid'
+                ? 'Simulasi pembayaran berhasil. Pesanan terkonfirmasi.'
+                : 'Simulasi pembayaran gagal/kedaluwarsa. Pesanan dibatalkan & stok dikembalikan.',
+        );
+    }
+
+    public function webhook(Request $request, PaymentGatewayService $paymentGateway)
+    {
+        $driverName = $request->query('driver')
+            ?? $request->input('driver')
+            ?? (string) config('payment.default', 'mock');
+
+        $paymentGateway->handleWebhook($request, $driverName);
+
+        return response()->json(['message' => 'OK']);
+    }
 }
