@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { createColumnHelper } from "@tanstack/react-table";
-import { router, useForm } from "@inertiajs/react";
-import { Eye, CheckCircle2, Truck, XCircle } from "lucide-react";
+import { useForm } from "@inertiajs/react";
+import { Eye, Truck, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { DataTableFeatures } from "../data-table-features";
@@ -13,9 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { updatePaymentStatus, updateStatus } from "@/routes";
 
-export interface OrderItem {
+export interface AdminOrderItem {
     id: number;
     product_name: string;
     variant_label?: string | null;
@@ -24,7 +23,7 @@ export interface OrderItem {
     line_total: number;
 }
 
-export interface Order {
+export interface AdminOrderRecord {
     id: number;
     order_code: string;
     tracking_token: string;
@@ -39,15 +38,17 @@ export interface Order {
     shipping_cost: number;
     total_amount: number;
     payment_method: string;
+    payment_gateway?: string | null;
+    payment_reference?: string | null;
     payment_status: string;
-    payment_proof_url?: string | null;
+    paid_at?: string | null;
     order_status: string;
     courier_name?: string | null;
     tracking_number?: string | null;
     admin_notes?: string | null;
     created_at?: string | null;
     items_count: number;
-    items: OrderItem[];
+    items: AdminOrderItem[];
 }
 
 const formatRupiah = (amount: number) => {
@@ -58,12 +59,12 @@ const formatRupiah = (amount: number) => {
     }).format(amount);
 };
 
-function ManageOrderModal({ order }: { order: Order }) {
+function ManageOrderModal({ order }: { order: AdminOrderRecord }) {
     const [isOpen, setIsOpen] = useState(false);
 
     const { data, setData, patch, reset, errors, clearErrors, processing } =
         useForm({
-            order_status: '',
+            order_status: order.order_status,
             courier_name: order.courier_name || "",
             tracking_number: order.tracking_number || "",
             admin_notes: order.admin_notes || "",
@@ -76,38 +77,12 @@ function ManageOrderModal({ order }: { order: Order }) {
             clearErrors();
         } else {
             setData({
+                order_status: order.order_status,
                 courier_name: order.courier_name || "",
                 tracking_number: order.tracking_number || "",
                 admin_notes: order.admin_notes || "",
             });
         }
-    };
-
-    const handlePaymentStatus = (
-        paymentStatus:
-            | "paid"
-            | "rejected"
-            | "unpaid"
-            | "waiting_verification"
-            | "refunded",
-    ) => {
-        router.patch(
-            updatePaymentStatus(order.id).url,
-            {
-                payment_status: paymentStatus,
-                admin_notes: data.admin_notes,
-            },
-            {
-                preserveScroll: true,
-                onSuccess: () => {
-                    setIsOpen(false);
-                },
-                onError: (error) => {
-                    console.error('Gagal memperbarui status pembayaran: ', error);
-                    toast.error("Gagal memperbarui status pembayaran.");
-                },
-            },
-        );
     };
 
     const handleOrderStatus = (
@@ -119,17 +94,17 @@ function ManageOrderModal({ order }: { order: Order }) {
             | "delivered"
             | "cancelled",
     ) => {
-        setData('order_status', nextStatus);
+        data.order_status = nextStatus;
 
-        patch(updateStatus(order.id).url, {
+        patch(`/admin/orders/${order.id}/status`, {
             preserveScroll: true,
             onSuccess: () => {
                 if (nextStatus === "delivered" || nextStatus === "cancelled") {
                     setIsOpen(false);
                 }
+                toast.success(`Status pesanan diubah menjadi ${nextStatus}.`);
             },
-            onError: (error) => {
-                console.error('Gagal memperbarui status pesanan: ', error);
+            onError: () => {
                 toast.error("Gagal memperbarui status pesanan.");
             },
         });
@@ -222,66 +197,32 @@ function ManageOrderModal({ order }: { order: Order }) {
                     </div>
                 </div>
 
-                {/* Bukti Pembayaran & Verifikasi */}
-                <div className="space-y-2 border-t pt-3">
-                    <div className="flex items-center justify-between">
-                        <span className="font-bold uppercase text-[10px] text-muted-foreground">
-                            Pembayaran ({order.payment_method.toUpperCase()})
-                        </span>
-                        <Badge
-                            variant={
-                                order.payment_status === "paid"
-                                    ? "default"
-                                    : "outline"
-                            }
-                            className="text-[10px]"
-                        >
-                            {order.payment_status}
-                        </Badge>
+                {/* Ringkasan Status Gateway (Read-only) */}
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
+                    <div className="space-y-0.5">
+                        <div className="font-bold uppercase text-[10px] text-muted-foreground">
+                            Gateway Pembayaran
+                        </div>
+                        <div className="text-muted-foreground">
+                            {(order.payment_gateway || order.payment_method).toUpperCase()}
+                            {order.payment_reference
+                                ? ` • Ref: ${order.payment_reference}`
+                                : ""}
+                        </div>
                     </div>
 
-                    {order.payment_proof_url && (
-                        <a
-                            href={order.payment_proof_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="block"
-                        >
-                            <img
-                                src={order.payment_proof_url}
-                                alt="Bukti Pembayaran"
-                                className="max-h-44 rounded-lg border object-contain bg-muted"
-                            />
-                        </a>
-                    )}
-
-                    <div className="flex flex-wrap gap-2">
-                        <Button
-                            type="button"
-                            size="sm"
-                            disabled={
-                                processing || order.payment_status === "paid"
-                            }
-                            onClick={() => handlePaymentStatus("paid")}
-                            className="cursor-pointer gap-1 h-8 text-xs"
-                        >
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            Verifikasi Lunas
-                        </Button>
-
-                        {order.payment_proof_url && (
-                            <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                disabled={processing}
-                                onClick={() => handlePaymentStatus("rejected")}
-                                className="cursor-pointer text-destructive h-8 text-xs"
-                            >
-                                Tolak Bukti
-                            </Button>
-                        )}
-                    </div>
+                    <Badge
+                        variant={
+                            order.payment_status === "paid"
+                                ? "default"
+                                : order.payment_status === "expired"
+                                  ? "destructive"
+                                  : "outline"
+                        }
+                        className="text-[10px] uppercase"
+                    >
+                        {order.payment_status}
+                    </Badge>
                 </div>
 
                 {/* Pengiriman & Status Order */}
@@ -406,7 +347,7 @@ function ManageOrderModal({ order }: { order: Order }) {
     );
 }
 
-const columnHelper = createColumnHelper<DataTableFeatures, Order>();
+const columnHelper = createColumnHelper<DataTableFeatures, AdminOrderRecord>();
 
 export const columns = columnHelper.columns([
     columnHelper.display({
@@ -453,14 +394,16 @@ export const columns = columnHelper.columns([
                     variant={
                         row.original.payment_status === "paid"
                             ? "default"
-                            : "outline"
+                            : row.original.payment_status === "expired"
+                              ? "destructive"
+                              : "outline"
                     }
                     className="text-[10px]"
                 >
                     {row.original.payment_status}
                 </Badge>
                 <span className="text-[10px] text-muted-foreground uppercase">
-                    {row.original.payment_method}
+                    {row.original.payment_gateway || row.original.payment_method}
                 </span>
             </div>
         ),

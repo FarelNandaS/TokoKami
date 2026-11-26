@@ -18,7 +18,11 @@ Route::get('/cart', [MainController::class, 'cart'])->name('cart');
 Route::get('/checkout', [MainController::class, 'checkout'])->name('checkout');
 Route::post('/checkout', [OrderController::class, 'order'])->name('order');
 Route::get('/order/track/{token}', [MainController::class, 'track'])->name('order-track');
-Route::post('/order/track/{token}/payment-proof', [OrderController::class, 'uploadPaymentProof'])->name('upload-payment-proof');
+Route::post('/order/track/{token}/mock-pay', [OrderController::class, 'mockSimulate'])->name('order-track.mock-pay');
+
+Route::prefix('api')->middleware(['api', 'throttle:60,1'])->group(function () {
+    Route::post('/webhooks/payment', [OrderController::class, 'webhook'])->name('webhooks.payment');
+});
 
 Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
     //dashboar routes
@@ -68,10 +72,9 @@ Route::prefix('admin')->middleware(['auth', 'verified'])->group(function () {
     });
 
     //Order Management routes
-    Route::middleware(['permission:Sale Management'])->group(function () {
+    Route::middleware(['permission:Order Management'])->group(function () {
         Route::get('order-management', [MainController::class, 'orderManagement'])->name('order-management');
 
-        Route::patch('orders/{order}/payment-status', [OrderController::class, 'updatePaymentStatus'])->name('update-payment-status');
         Route::patch('orders/{order}/status', [OrderController::class, 'updateStatus'])->name('update-status');
     });
 

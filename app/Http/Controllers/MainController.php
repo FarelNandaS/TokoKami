@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\ProductImage;
 use App\Models\ProductSale;
 use App\Models\User;
+use App\Services\Payment\PaymentGatewayService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -102,7 +103,7 @@ class MainController extends Controller
                 'name' => $product->name,
                 'description' => $product->description,
                 'price' => $displayPrice,
-                'image' => $coverImage ? '/storage/' . $coverImage->image_path : '/images/placeholder.jpg',
+                'image' => $coverImage ? '/storage/' . $coverImage->image_path : '/images/placeholder.png',
                 'originalPrice' => $originalPrice,
                 'discountPercentage' => $discountPercentage,
                 'isOnSale' => $isOnSale,
@@ -184,7 +185,7 @@ class MainController extends Controller
             $allImages[] = ['id' => $img->id, 'url' => '/storage/' . $img->image_path];
         }
         if (empty($allImages)) {
-            $allImages[] = ['id' => 0, 'url' => '/images/placeholder.jpg'];
+            $allImages[] = ['id' => 0, 'url' => '/images/placeholder.png'];
         }
 
         $category = $product->categories()->get();
@@ -362,7 +363,7 @@ class MainController extends Controller
                 'name' => $product->name,
                 'description' => $product->description,
                 'price' => $displayPrice,
-                'image' => $coverImage ? '/storage/' . $coverImage->image_path : '/images/placeholder.jpg',
+                'image' => $coverImage ? '/storage/' . $coverImage->image_path : '/images/placeholder.png',
                 'originalPrice' => $originalPrice,
                 'discountPercentage' => $discountPercentage,
                 'isOnSale' => $isOnSale,
@@ -454,7 +455,7 @@ class MainController extends Controller
                 'name' => $product->name,
                 'description' => $product->description,
                 'price' => $displayPrice,
-                'image' => $coverImage ? '/storage/' . $coverImage->image_path : '/images/placeholder.jpg',
+                'image' => $coverImage ? '/storage/' . $coverImage->image_path : '/images/placeholder.png',
                 'originalPrice' => $originalPrice,
                 'discountPercentage' => $discountPercentage,
                 'isOnSale' => $isOnSale,
@@ -568,7 +569,7 @@ class MainController extends Controller
                     'name' => $product->name,
                     'description' => $product->description,
                     'price' => $displayPrice,
-                    'image' => $coverImage ? '/storage/' . $coverImage->image_path : '/images/placeholder.jpg',
+                    'image' => $coverImage ? '/storage/' . $coverImage->image_path : '/images/placeholder.png',
                     'originalPrice' => $originalPrice,
                     'discountPercentage' => $discountPercentage,
                     'isOnSale' => $isOnSale,
@@ -722,7 +723,7 @@ class MainController extends Controller
                     'variantId' => $variantId,
                     'variantLabel' => $variantLabel,
                     'name' => $product->name,
-                    'image' => $coverImage ? '/storage/' . $coverImage->image_path : '/images/placeholder.jpg',
+                    'image' => $coverImage ? '/storage/' . $coverImage->image_path : '/images/placeholder.png',
                     'price' => $saleInfo['price'],
                     'originalPrice' => $saleInfo['originalPrice'],
                     'discountPercentage' => $saleInfo['discountPercentage'],
@@ -867,7 +868,7 @@ class MainController extends Controller
                     'variantId' => $variantId,
                     'variantLabel' => $variantLabel,
                     'name' => $product->name,
-                    'image' => $coverImage ? '/storage/' . $coverImage->image_path : '/images/placeholder.jpg',
+                    'image' => $coverImage ? '/storage/' . $coverImage->image_path : '/images/placeholder.png',
                     'price' => $saleInfo['price'],
                     'originalPrice' => $saleInfo['originalPrice'],
                     'discountPercentage' => $saleInfo['discountPercentage'],
@@ -885,7 +886,7 @@ class MainController extends Controller
         ]);
     }
 
-    public function track($token)
+    public function track($token, PaymentGatewayService $paymentGateway)
     {
         $order = Order::with('items')
             ->where('tracking_token', $token)
@@ -908,9 +909,9 @@ class MainController extends Controller
                 'total_amount' => (int) $order->total_amount,
                 'payment_method' => $order->payment_method,
                 'payment_status' => $order->payment_status,
-                'payment_proof_url' => $order->payment_proof_path
-                    ? Storage::url($order->payment_proof_path)
-                    : null,
+                'payment_gateway' => $order->payment_gateway,
+                'payment_reference' => $order->payment_reference,
+                'paid_at' => $order->paid_at?->toIso8601String(),
                 'order_status' => $order->order_status,
                 'courier_name' => $order->courier_name,
                 'tracking_number' => $order->tracking_number,
@@ -932,6 +933,7 @@ class MainController extends Controller
                     ];
                 })->values(),
             ],
+            'isMockPayment' => $paymentGateway->isMockMode(),
         ]);
     }
 
@@ -1079,9 +1081,9 @@ class MainController extends Controller
                 'total_amount' => (int) $order->total_amount,
                 'payment_method' => $order->payment_method,
                 'payment_status' => $order->payment_status,
-                'payment_proof_url' => $order->payment_proof_path
-                    ? Storage::url($order->payment_proof_path)
-                    : null,
+                'payment_gateway' => $order->payment_gateway,
+                'payment_reference' => $order->payment_reference,
+                'paid_at' => $order->paid_at?->toIso8601String(),
                 'order_status' => $order->order_status,
                 'courier_name' => $order->courier_name,
                 'tracking_number' => $order->tracking_number,

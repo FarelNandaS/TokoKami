@@ -6,16 +6,15 @@ import {
     Package,
     Truck,
     XCircle,
-    Upload,
     Copy,
     Check,
     ChevronRight,
+    ShieldCheck,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { InputFile } from "@/components/input-file";
 
 interface TrackOrderItem {
     id: number;
@@ -43,23 +42,12 @@ interface OrderTrackData {
     subtotal: number;
     shipping_cost: number;
     total_amount: number;
-    payment_method: "bank_transfer" | "qris" | "cod" | string;
-    payment_status:
-        | "unpaid"
-        | "waiting_verification"
-        | "paid"
-        | "rejected"
-        | "refunded"
-        | string;
-    payment_proof_url?: string | null;
-    order_status:
-        | "pending"
-        | "confirmed"
-        | "processing"
-        | "shipped"
-        | "delivered"
-        | "cancelled"
-        | string;
+    payment_method: string;
+    payment_gateway?: string | null;
+    payment_reference?: string | null;
+    payment_status: string;
+    paid_at?: string | null;
+    order_status: string;
     courier_name?: string | null;
     tracking_number?: string | null;
     admin_notes?: string | null;
@@ -69,7 +57,7 @@ interface OrderTrackData {
 
 interface OrderTrackPageProps {
     order: OrderTrackData;
-    errors?: Record<string, string>;
+    isMockPayment?: boolean;
 }
 
 const ORDER_STEPS = [
@@ -82,10 +70,9 @@ const ORDER_STEPS = [
 
 export default function OrderTrackPage({
     order,
-    errors = {},
+    isMockPayment = false,
 }: OrderTrackPageProps) {
-    const [proofFile, setProofFile] = useState<File | null>(null);
-    const [uploading, setUploading] = useState(false);
+    const [simulating, setSimulating] = useState(false);
     const [copied, setCopied] = useState(false);
 
     const formatRupiah = (amount: number) => {
@@ -99,7 +86,7 @@ export default function OrderTrackPage({
     const paymentMethodLabel = (method: string) => {
         switch (method) {
             case "bank_transfer":
-                return "Transfer Bank";
+                return "Virtual Account / Transfer";
             case "qris":
                 return "QRIS";
             case "cod":
@@ -117,18 +104,12 @@ export default function OrderTrackPage({
                         Sudah Dibayar
                     </Badge>
                 );
-            case "waiting_verification":
-                return (
-                    <Badge className="bg-amber-500 text-white">
-                        Menunggu Verifikasi
-                    </Badge>
-                );
-            case "rejected":
-                return <Badge variant="destructive">Bukti Ditolak</Badge>;
+            case "expired":
+                return <Badge variant="destructive">Kedaluwarsa / Gagal</Badge>;
             case "refunded":
                 return <Badge variant="secondary">Refund</Badge>;
             default:
-                return <Badge variant="outline">Belum Dibayar</Badge>;
+                return <Badge variant="outline">Menunggu Pembayaran</Badge>;
         }
     };
 
@@ -142,27 +123,18 @@ export default function OrderTrackPage({
         setTimeout(() => setCopied(false), 1800);
     };
 
-    const handleUploadProof = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!proofFile || uploading) return;
-
-        setUploading(true);
+    const handleMockSimulate = (status: "paid" | "failed") => {
+        if (simulating) return;
+        setSimulating(true);
         router.post(
-            `/order/track/${order.tracking_token}/payment-proof`,
-            { payment_proof: proofFile },
+            `/order/track/${order.tracking_token}/mock-pay`,
+            { status },
             {
-                forceFormData: true,
                 preserveScroll: true,
-                onSuccess: () => setProofFile(null),
-                onFinish: () => setUploading(false),
+                onFinish: () => setSimulating(false),
             },
         );
     };
-
-    const canUploadProof =
-        order.order_status !== "cancelled" &&
-        order.payment_method !== "cod" &&
-        order.payment_status !== "paid";
 
     return (
         <>
@@ -183,7 +155,7 @@ export default function OrderTrackPage({
                                 <button
                                     type="button"
                                     onClick={handleCopyCode}
-                                    className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-md bg-muted hover:bg-accent transition-colors"
+                                    className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-md bg-muted hover:bg-accent transition-colors cursor-pointer"
                                 >
                                     {copied ? (
                                         <>
@@ -199,11 +171,11 @@ export default function OrderTrackPage({
                                 </button>
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                Simpan halaman ini atau cek email{" "}
+                                Simpan URL halaman ini atau cek email{" "}
                                 <span className="font-medium text-foreground">
                                     {order.customer_email}
                                 </span>{" "}
-                                untuk memantau status pengiriman kapan saja.
+                                untuk memantau status pesanan kapan saja.
                             </p>
                         </div>
 
@@ -218,6 +190,59 @@ export default function OrderTrackPage({
                         </div>
                     </CardContent>
                 </Card>
+
+                {/* Panel Simulasi Pembayaran (Hanya tampil jika PAYMENT_DRIVER=mock & order masih unpaid) */}
+                {isMockPayment &&
+                    order.payment_method !== "cod" &&
+                    order.payment_status === "unpaid" &&
+                    order.order_status !== "cancelled" && (
+                        <Card className="rounded-2xl border-amber-500/40 bg-amber-500/5 shadow-sm">
+                            <CardContent className="p-6 space-y-3">
+                                <div className="space-y-1">
+                                    <Badge className="bg-amber-500 text-white text-[10px]">
+                                        MOCK PAYMENT MODE
+                                    </Badge>
+                                    <h2 className="text-base font-black tracking-tight">
+                                        Simulasi Pembayaran Gateway (Demo)
+                                    </h2>
+                                    <p className="text-xs text-muted-foreground">
+                                        Aplikasi berjalan tanpa API key gateway
+                                        eksternal. Pilih hasil simulasi untuk
+                                        menguji webhook pembayaran otomatis.
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-wrap gap-2 pt-1">
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        disabled={simulating}
+                                        onClick={() =>
+                                            handleMockSimulate("paid")
+                                        }
+                                        className="rounded-xl font-semibold cursor-pointer"
+                                    >
+                                        {simulating
+                                            ? "Memproses..."
+                                            : "Simulasikan Bayar Lunas"}
+                                    </Button>
+
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        disabled={simulating}
+                                        onClick={() =>
+                                            handleMockSimulate("failed")
+                                        }
+                                        className="rounded-xl font-semibold text-destructive hover:bg-destructive/10 cursor-pointer"
+                                    >
+                                        Simulasikan Gagal / Expired
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
 
                 {/* Timeline Status Order */}
                 <Card className="rounded-2xl border-border bg-card shadow-sm">
@@ -289,12 +314,12 @@ export default function OrderTrackPage({
                 </Card>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                    {/* Daftar Barang & Pembayaran */}
-                    <div className="lg:col-span-7 space-y-6">
+                    {/* Rincian Barang & Info Transaksi */}
+                    <div className="lg:col-span-7">
                         <Card className="rounded-2xl border-border bg-card shadow-sm">
                             <CardContent className="p-6 space-y-4">
                                 <h2 className="text-base font-black tracking-tight">
-                                    Rincian Barang
+                                    Rincian Barang &amp; Pembayaran
                                 </h2>
                                 <div className="divide-y divide-border">
                                     {order.items.map((item) => (
@@ -335,6 +360,14 @@ export default function OrderTrackPage({
                                             )}
                                         </span>
                                     </div>
+                                    {order.payment_reference && (
+                                        <div className="flex justify-between text-muted-foreground text-xs">
+                                            <span>Referensi Transaksi</span>
+                                            <span className="font-mono font-semibold text-foreground">
+                                                {order.payment_reference}
+                                            </span>
+                                        </div>
+                                    )}
                                     <div className="flex justify-between text-muted-foreground text-xs">
                                         <span>Ongkos Kirim</span>
                                         <span className="font-semibold text-foreground">
@@ -352,69 +385,16 @@ export default function OrderTrackPage({
                                         </span>
                                     </div>
                                 </div>
+
+                                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground pt-1">
+                                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+                                    <span>
+                                        Status pembayaran diverifikasi otomatis
+                                        melalui sistem gateway.
+                                    </span>
+                                </div>
                             </CardContent>
                         </Card>
-
-                        {/* Upload Bukti Pembayaran */}
-                        {order.payment_method !== "cod" && (
-                            <Card className="rounded-2xl border-border bg-card shadow-sm">
-                                <CardContent className="p-6 space-y-4">
-                                    <h2 className="text-base font-black tracking-tight">
-                                        Bukti Pembayaran
-                                    </h2>
-
-                                    {order.payment_proof_url && (
-                                        <div className="space-y-2">
-                                            <p className="text-xs text-muted-foreground">
-                                                Bukti pembayaran terunggah saat
-                                                ini:
-                                            </p>
-                                            <img
-                                                src={order.payment_proof_url}
-                                                alt="Bukti Pembayaran"
-                                                className="max-h-60 rounded-xl border border-border object-contain bg-muted"
-                                            />
-                                        </div>
-                                    )}
-
-                                    {canUploadProof && (
-                                        <form
-                                            onSubmit={handleUploadProof}
-                                            className="space-y-3 pt-2"
-                                        >
-                                            <InputFile
-                                                type="file"
-                                                accept="image/jpeg,image/png,image/webp"
-                                                value={proofFile ? [proofFile] : []}
-                                                onChange={(files) =>
-                                                    setProofFile(
-                                                        files[0] ?? null
-                                                    )
-                                                }
-                                            />
-                                            {errors.payment_proof && (
-                                                <p className="text-xs text-destructive">
-                                                    {errors.payment_proof}
-                                                </p>
-                                            )}
-                                            <Button
-                                                type="submit"
-                                                size="sm"
-                                                disabled={
-                                                    !proofFile || uploading
-                                                }
-                                                className="rounded-xl gap-1.5 font-semibold"
-                                            >
-                                                <Upload className="h-3.5 w-3.5" />
-                                                {uploading
-                                                    ? "Mengunggah..."
-                                                    : "Unggah Bukti Pembayaran"}
-                                            </Button>
-                                        </form>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        )}
                     </div>
 
                     {/* Informasi Penerima */}

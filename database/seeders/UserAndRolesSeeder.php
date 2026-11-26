@@ -23,6 +23,7 @@ class UserAndRolesSeeder extends Seeder
             'Category Management',
             'Banner Organize',
             'Sale Management',
+            'Order Management',
             'Admin Management',
         ];
 

@@ -72,6 +72,7 @@ function AdminPermissionModal({ admin }: { admin: Admin }) {
         "Category Management",
         "Banner Organize",
         "Sale Management",
+        "Order Management",
         "Admin Management",
     ];
 

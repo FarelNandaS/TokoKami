@@ -7,6 +7,7 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductSale;
 use App\Models\ProductVariant;
+use App\Services\Payment\PaymentGatewayService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -56,7 +57,7 @@ class OrderController extends Controller
         ];
     }
 
-    public function order(Request $request)
+    public function order(Request $request, PaymentGatewayService $paymentGateway)
     {
         $validated = $request->validate([
             'customer_name' => ['required', 'string', 'max:150'],
@@ -199,61 +200,20 @@ class OrderController extends Controller
             return $createdOrder;
         });
 
-        return redirect()->route('order-track', ['token' => $order->tracking_token]);
-    }
+        if ($order->payment_method === 'cod') {
+            return redirect()->route('order-track', ['token' => $order->tracking_token]);
+        }
 
-    public function uploadPaymentProof(Request $request, $token)
-    {
-        $order = Order::where('tracking_token', $token)->firstOrFail();
+        $session = $paymentGateway->initiatePayment($order);
 
-        if ($order->order_status === 'cancelled') {
-            return back()->withErrors([
-                'payment_proof' => 'Pesanan sudah dibatalkan, tidak dapat mengunggah bukti bayar.',
+        if ($session->isMock || empty($session->redirectUrl)) {
+            return redirect()->route('order-track', [
+                'token' => $order->tracking_token,
+                'mock' => $session->isMock ? 1 : null,
             ]);
         }
 
-        $validated = $request->validate([
-            'payment_proof' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:3072'],
-        ]);
-
-        if ($order->payment_proof_path && Storage::disk('public')->exists($order->payment_proof_path)) {
-            Storage::disk('public')->delete($order->payment_proof_path);
-        }
-
-        $path = $validated['payment_proof']->store('payment-proofs', 'public');
-
-        $order->update([
-            'payment_proof_path' => $path,
-            'payment_status' => 'waiting_verification',
-        ]);
-
-        return back()->with('success', 'Bukti pembayaran berhasil diunggah. Menunggu verifikasi admin.');
-    }
-
-    public function updatePaymentStatus(Request $request, Order $order)
-    {
-        $validated = $request->validate([
-            'payment_status' => ['required', 'in:unpaid,waiting_verification,paid,rejected,refunded'],
-            'admin_notes' => ['nullable', 'string', 'max:1000'],
-        ]);
-
-        $nextOrderStatus = $order->order_status;
-
-        if ($validated['payment_status'] === 'paid' && $order->order_status === 'pending') {
-            $nextOrderStatus = 'confirmed';
-        } elseif ($validated['payment_status'] === 'rejected' && $order->order_status === 'confirmed') {
-            $nextOrderStatus = 'pending';
-        }
-
-        $order->update([
-            'payment_status' => $validated['payment_status'],
-            'order_status' => $nextOrderStatus,
-            'admin_notes' => $validated['admin_notes'] ?? $order->admin_notes,
-        ]);
-
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Status pembayaran pesanan diperbarui.']);
-
-        return back();
+        return Inertia::location($session->redirectUrl);
     }
 
     public function updateStatus(Request $request, Order $order)
