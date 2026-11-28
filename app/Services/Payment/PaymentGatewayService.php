@@ -3,6 +3,7 @@
 
 namespace App\Services\Payment;
 
+use App\Mail\OrderNotificationMail;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
@@ -10,6 +11,8 @@ use App\Services\Payment\Drivers\MidtransPaymentDriver;
 use App\Services\Payment\Drivers\MockPaymentDriver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use InvalidArgumentException;
 
 class PaymentGatewayService
@@ -69,6 +72,14 @@ class PaymentGatewayService
                     'payment_reference' => $parsed->transactionId ?? $order->payment_reference,
                     'paid_at' => now(),
                 ]);
+
+                DB::afterCommit(function () use ($order) {
+                    try {
+                        Mail::to($order->customer_email)->send(new OrderNotificationMail($order, 'paid'));
+                    } catch (\Throwable $e) {
+                        Log::warning("Gagal mengirim email pembayaran lunas {$order->order_code}: " . $e->getMessage());
+                    }
+                });
             } elseif ($parsed->outcome === 'failed' && $order->order_status !== 'cancelled') {
                 foreach ($order->items as $item) {
                     $qty = (int) $item->quantity;

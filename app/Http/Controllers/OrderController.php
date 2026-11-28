@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\OrderNotificationMail;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
@@ -11,6 +12,8 @@ use App\Services\Payment\PaymentGatewayService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -202,6 +205,12 @@ class OrderController extends Controller
 
         if ($order->payment_method === 'cod') {
             return redirect()->route('order-track', ['token' => $order->tracking_token]);
+        }
+
+        try {
+            Mail::to($order->customer_email)->send(new OrderNotificationMail($order, 'created'));
+        } catch (\Throwable $e) {
+            Log::warning("Gagal mengirim email konfirmasi order {$order->order_code}: " . $e->getMessage());
         }
 
         $session = $paymentGateway->initiatePayment($order);
