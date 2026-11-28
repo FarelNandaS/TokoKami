@@ -4,7 +4,7 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { DataTableFeatures } from "../data-table-features";
 import { ConfirmationAlert } from "@/components/confirmationAlert";
 import { Button } from "@/components/ui/button";
-import { FileInput, Pen, Trash } from "lucide-react";
+import { FileInput, Layers, Pen, Trash } from "lucide-react";
 import { router, useForm } from "@inertiajs/react";
 import { deleteProduct, editProduct } from "@/routes";
 import { toast } from "sonner";
@@ -16,7 +16,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { InputRupiah } from "@/components/input-rupiah";
 import { InputFile } from "@/components/input-file";
 import { Category } from "./category-management";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 
 type productImages = {
     id: number;
@@ -54,6 +61,13 @@ export type product = {
     attributes?: AttributeCard[];
     category_ids?: number[];
 };
+
+const formatRupiah = (amount: number) =>
+    new Intl.NumberFormat("id-ID", {
+        style: "currency",
+        currency: "IDR",
+        maximumFractionDigits: 0,
+    }).format(amount);
 
 function EditProductModal({
     product,
@@ -102,6 +116,7 @@ function EditProductModal({
         id: product.id,
         name: product.name,
         description: product.description,
+        has_variants: (product.variants?.length ?? 0) > 0,
         price: product.price,
         existing_cover_id: product.cover_image ? product.cover_image.id : null,
         existing_images: product.images
@@ -113,6 +128,10 @@ function EditProductModal({
         category_ids: product.category_ids || [],
         _method: "PUT",
     });
+
+    const getError = (key: string): string | undefined => {
+        return (errors as Record<string, string | undefined>)[key];
+    };
 
     const handleOpenChange = (open: boolean) => {
         setIsOpen(open);
@@ -224,7 +243,7 @@ function EditProductModal({
                     id: null, // ID null menandakan ini varian baru di backend
                     combination: combinationName,
                     sku: `${data.name ? data.name.toUpperCase().replace(/\s+/g, "-") : "PROD"}-${combo.join("-").toUpperCase()}`,
-                    price: Number(data.price) || 0,
+                    price: 0,
                     stock: 0,
                 };
             }
@@ -363,27 +382,264 @@ function EditProductModal({
                             </span>
                         )}
                     </Field>
-                    <Field className="gap-2">
-                        <FieldLabel htmlFor="edit-price" className="gap-0">
-                            Price
-                            <span className="text-lg text-destructive">*</span>
-                        </FieldLabel>
-                        <InputRupiah
-                            id="edit-price"
-                            value={data.price}
-                            onValueChange={(val) =>
-                                setData("price", Number(val))
-                            }
-                            required
-                            placeholder="50000"
-                            aria-invalid={errors.price ? true : false}
+
+                    <div className="gap-2 flex mt-2">
+                        <FieldLabel htmlFor="has_variants">Variants</FieldLabel>
+                        <Switch
+                            id="has_variants"
+                            checked={data.has_variants}
+                            onCheckedChange={(val) => {
+                                setVariants(
+                                    product.variants
+                                        ? product.variants.map((v) => ({
+                                              id: v.id,
+                                              combination: v.attribute_values
+                                                  .map((av) => av.value)
+                                                  .join(" / "),
+                                              sku: v.sku,
+                                              price: v.price,
+                                              stock: v.stock,
+                                          }))
+                                        : [],
+                                );
+                                setAttributes(product.attributes ?? []);
+                                setData("price", product.price);
+                                setData("has_variants", val);
+                            }}
                         />
-                        {errors.price && (
-                            <span className="text-xs text-destructive">
-                                {errors.price}
-                            </span>
-                        )}
-                    </Field>
+                    </div>
+
+                    {!data.has_variants && (
+                        <Field className="gap-2">
+                            <FieldLabel htmlFor="edit-price" className="gap-0">
+                                Price
+                                <span className="text-lg text-destructive">
+                                    *
+                                </span>
+                            </FieldLabel>
+                            <InputRupiah
+                                id="edit-price"
+                                value={data.price}
+                                onValueChange={(val) =>
+                                    setData("price", Number(val))
+                                }
+                                placeholder="50000"
+                                aria-invalid={errors.price ? true : false}
+                            />
+                            {errors.price && (
+                                <span className="text-xs text-destructive">
+                                    {errors.price}
+                                </span>
+                            )}
+                        </Field>
+                    )}
+
+                    {data.has_variants && (
+                        <>
+                            <div className="border-t pt-4">
+                                <div className="flex justify-between items-center mb-3">
+                                    <div>
+                                        <h3 className="font-semibold text-sm flex items-center gap-1.5">
+                                            <Layers className="h-4 w-4" />{" "}
+                                            Atribut & Pilihan Varian
+                                        </h3>
+                                        <p className="text-xs text-muted-foreground">
+                                            Buat atribut (misal: Warna, Ukuran)
+                                            dan pisahkan nilainya dengan koma.
+                                        </p>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleAddAttributeCard}
+                                    >
+                                        Tambah Atribut
+                                    </Button>
+                                </div>
+
+                                <div className="space-y-3 mb-4">
+                                    {attributes.map((attr) => (
+                                        <div
+                                            key={attr.id}
+                                            className="border p-3 rounded-lg bg-muted/30 flex gap-3 items-end"
+                                        >
+                                            <div className="flex-1">
+                                                <label className="text-xs font-medium mb-1 block">
+                                                    Nama Atribut
+                                                </label>
+                                                <Input
+                                                    placeholder="Cth: Warna"
+                                                    value={attr.name}
+                                                    onChange={(e) =>
+                                                        handleAttributeChange(
+                                                            attr.id,
+                                                            "name",
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    className="h-8 text-xs"
+                                                />
+                                            </div>
+                                            <div className="flex-[2]">
+                                                <label className="text-xs font-medium mb-1 block">
+                                                    Nilai (Pisahkan dengan koma)
+                                                </label>
+                                                <Input
+                                                    placeholder="Cth: Merah, Biru"
+                                                    value={attr.values}
+                                                    onChange={(e) =>
+                                                        handleAttributeChange(
+                                                            attr.id,
+                                                            "values",
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    className="h-8 text-xs"
+                                                />
+                                            </div>
+                                            <Button
+                                                type="button"
+                                                variant="destructive"
+                                                size="sm"
+                                                onClick={() =>
+                                                    handleDeleteAttributeCard(
+                                                        attr.id,
+                                                    )
+                                                }
+                                                className="h-8 w-8 p-0"
+                                            >
+                                                <Trash />
+                                            </Button>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <ConfirmationAlert
+                                    handle={handleGenerateVariant}
+                                    title="Anda yakin ingin melakukan ini?"
+                                    desc="Jika anda cuman menambah atau menganti attribute value itu aman. Tapi jika anda menganti attribute (menambah / mengurangi attribute) variant yang lama akan terhapus. Hal ini bisa membuat product yang sudah di order oleh customer bisa bermasalah. Jadi pastikan product / variant sudah aman untuk di ganti!"
+                                >
+                                    <Button className="w-full text-xs h-9 cursor-pointer">
+                                        Generate Ulang Tabel Varian
+                                    </Button>
+                                </ConfirmationAlert>
+                            </div>
+
+                            {variants.length > 0 && (
+                                <div className="border-t pt-4 mt-2">
+                                    <h3 className="font-semibold text-sm mb-2">
+                                        Edit Varian Produk
+                                    </h3>
+                                    <div className="border rounded-md overflow-hidden">
+                                        <table className="w-full text-xs text-left">
+                                            <thead className="bg-muted text-muted-foreground border-b">
+                                                <tr>
+                                                    <th className="p-2">
+                                                        Kombinasi Varian
+                                                    </th>
+                                                    <th className="p-2">
+                                                        SKU Unik
+                                                    </th>
+                                                    <th className="p-2">
+                                                        Harga (Rp)
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {variants.map((v, idx) => {
+                                                    const skuError = getError(
+                                                        `variants.${idx}.sku`,
+                                                    );
+                                                    const priceError = getError(
+                                                        `variants.${idx}.price`,
+                                                    );
+
+                                                    return (
+                                                        <tr
+                                                            key={v.id || idx}
+                                                            className="border-b"
+                                                        >
+                                                            <td className="p-2 font-medium">
+                                                                {v.combination}
+                                                            </td>
+                                                            <td className="p-2">
+                                                                <Input
+                                                                    value={
+                                                                        v.sku
+                                                                    }
+                                                                    onChange={(
+                                                                        e,
+                                                                    ) =>
+                                                                        handleVariantChange(
+                                                                            idx,
+                                                                            "sku",
+                                                                            e
+                                                                                .target
+                                                                                .value,
+                                                                        )
+                                                                    }
+                                                                    aria-invalid={
+                                                                        skuError
+                                                                            ? true
+                                                                            : false
+                                                                    }
+                                                                    className="h-7 text-xs"
+                                                                />
+                                                                {skuError && (
+                                                                    <span className="text-[11px] text-destructive block mt-1">
+                                                                        {
+                                                                            skuError
+                                                                        }
+                                                                    </span>
+                                                                )}
+                                                            </td>
+                                                            <td className="p-2">
+                                                                <InputRupiah
+                                                                    value={
+                                                                        v.price
+                                                                    }
+                                                                    onValueChange={(
+                                                                        val,
+                                                                    ) =>
+                                                                        handleVariantChange(
+                                                                            idx,
+                                                                            "price",
+                                                                            Number(
+                                                                                val,
+                                                                            ),
+                                                                        )
+                                                                    }
+                                                                    aria-invalid={
+                                                                        priceError
+                                                                            ? true
+                                                                            : false
+                                                                    }
+                                                                    className="h-7 text-xs"
+                                                                />
+                                                                {priceError && (
+                                                                    <span className="text-[11px] text-destructive block mt-1">
+                                                                        {
+                                                                            priceError
+                                                                        }
+                                                                    </span>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    )}
+                    {getError("variants") && (
+                        <span className="text-xs text-destructive">
+                            {getError("variants")}
+                        </span>
+                    )}
 
                     <Field className="gap-2" orientation="vertical">
                         <FieldLabel className="gap-0">Categories</FieldLabel>
@@ -457,144 +713,6 @@ function EditProductModal({
                         </div>
                     </Field>
 
-                    <div className="border-t pt-4 mt-2">
-                        <div className="flex justify-between items-center mb-3">
-                            <h3 className="font-semibold text-sm">
-                                Edit Atribut & Varian Produk
-                            </h3>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={handleAddAttributeCard}
-                            >
-                                Tambah Atribut
-                            </Button>
-                        </div>
-
-                        <div className="space-y-3 mb-4">
-                            {attributes.map((attr) => (
-                                <div
-                                    key={attr.id}
-                                    className="border p-3 rounded-lg bg-muted/30 flex gap-3 items-end"
-                                >
-                                    <div className="flex-1">
-                                        <label className="text-xs font-medium mb-1 block">
-                                            Nama Atribut
-                                        </label>
-                                        <Input
-                                            placeholder="Cth: Warna"
-                                            value={attr.name}
-                                            onChange={(e) =>
-                                                handleAttributeChange(
-                                                    attr.id,
-                                                    "name",
-                                                    e.target.value,
-                                                )
-                                            }
-                                            className="h-8 text-xs"
-                                        />
-                                    </div>
-                                    <div className="flex-[2]">
-                                        <label className="text-xs font-medium mb-1 block">
-                                            Nilai (Pisahkan dengan koma)
-                                        </label>
-                                        <Input
-                                            placeholder="Cth: Merah, Biru"
-                                            value={attr.values}
-                                            onChange={(e) =>
-                                                handleAttributeChange(
-                                                    attr.id,
-                                                    "values",
-                                                    e.target.value,
-                                                )
-                                            }
-                                            className="h-8 text-xs"
-                                        />
-                                    </div>
-                                    <Button
-                                        type="button"
-                                        variant="destructive"
-                                        size="sm"
-                                        onClick={() =>
-                                            handleDeleteAttributeCard(attr.id)
-                                        }
-                                        className="h-8 w-8 p-0"
-                                    >
-                                        <Trash />
-                                    </Button>
-                                </div>
-                            ))}
-                        </div>
-
-                        <ConfirmationAlert
-                            handle={handleGenerateVariant}
-                            title="Anda yakin ingin melakukan ini?"
-                            desc="Jika anda cuman menambah atau menganti attribute value itu aman. Tapi jika anda menganti attribute (menambah / mengurangi attribute) variant yang lama akan terhapus. Hal ini bisa membuat product yang sudah di order oleh customer bisa bermasalah. Jadi pastikan product / variant sudah aman untuk di ganti!"
-                        >
-                            <Button className="w-full text-xs h-9 cursor-pointer">
-                                Generate Ulang Tabel Varian
-                            </Button>
-                        </ConfirmationAlert>
-                    </div>
-                    {variants.length > 0 && (
-                        <div className="border-t pt-4 mt-2">
-                            <h3 className="font-semibold text-sm mb-2">
-                                Edit Varian Produk
-                            </h3>
-                            <div className="border rounded-md overflow-hidden">
-                                <table className="w-full text-xs text-left">
-                                    <thead className="bg-muted text-muted-foreground border-b">
-                                        <tr>
-                                            <th className="p-2">
-                                                Kombinasi Varian
-                                            </th>
-                                            <th className="p-2">SKU Unik</th>
-                                            <th className="p-2">Harga (Rp)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {variants.map((v, idx) => (
-                                            <tr
-                                                key={v.id || idx}
-                                                className="border-b"
-                                            >
-                                                <td className="p-2 font-medium">
-                                                    {v.combination}
-                                                </td>
-                                                <td className="p-2">
-                                                    <Input
-                                                        value={v.sku}
-                                                        onChange={(e) =>
-                                                            handleVariantChange(
-                                                                idx,
-                                                                "sku",
-                                                                e.target.value,
-                                                            )
-                                                        }
-                                                        className="h-7 text-xs"
-                                                    />
-                                                </td>
-                                                <td className="p-2">
-                                                    <InputRupiah
-                                                        value={v.price}
-                                                        onValueChange={(val) =>
-                                                            handleVariantChange(
-                                                                idx,
-                                                                "price",
-                                                                Number(val),
-                                                            )
-                                                        }
-                                                        className="h-7 text-xs"
-                                                    />
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    )}
                     <Field className="gap-2">
                         <FieldLabel htmlFor="edit-images" className="gap-0">
                             Cover Image
@@ -674,15 +792,24 @@ export const createColumns = (categories: Category[]) => {
         columnHelper.accessor("price", {
             header: "Price",
             cell: ({ row }) => {
-                const amount = row.original.price;
+                const product = row.original;
 
-                const formatted = new Intl.NumberFormat("id-ID", {
-                    style: "currency",
-                    currency: "IDR",
-                    minimumFractionDigits: 0,
-                }).format(amount);
+                const productPrice = row.original.price;
 
-                return formatted;
+                const variantPrices =
+                    product.variants?.map((variant) => variant.price) ?? [];
+                const minVariantPrice = variantPrices.length
+                    ? Math.min(...variantPrices)
+                    : productPrice;
+                const maxVariantPrice = variantPrices.length
+                    ? Math.max(...variantPrices)
+                    : productPrice;
+
+                if (minVariantPrice === maxVariantPrice) {
+                    return formatRupiah(minVariantPrice);
+                }
+
+                return `${formatRupiah(minVariantPrice)} - ${formatRupiah(maxVariantPrice)}`;
             },
         }),
         columnHelper.display({
@@ -694,7 +821,10 @@ export const createColumns = (categories: Category[]) => {
                 console.log(table.options.meta);
                 return (
                     <div className="flex flex-col md:flex-row gap-2">
-                        <EditProductModal product={product} categories={categories}/>
+                        <EditProductModal
+                            product={product}
+                            categories={categories}
+                        />
 
                         <ConfirmationAlert
                             handle={() => handleDelete(product.id)}

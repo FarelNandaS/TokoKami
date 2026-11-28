@@ -9,25 +9,39 @@ use App\Models\ProductVariant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class ProductController extends Controller
 {
     public function createProduct(Request $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'required|string|max:255',
-            'price' => 'required|integer',
-            'category_ids' => 'nullable|array|min:1',
-            'category_ids.*' => 'integer|exists:categories,id',
-            'product_attributes' => 'nullable|array|min:1',
-            'variants' => 'nullable|array|min:1',
-            'variants.*.sku' => 'string|unique:product_variants,sku',
-            'variants.*.price' => 'integer',
-            'images' => 'array|min:1',
-            'images.*' => 'image|mimes:png,jpg,jpeg,webp|max:2048',
-        ]);
+        $request->validate(
+            [
+                'has_variants' => 'required|boolean',
+                'name' => 'required|string|max:255',
+                'description' => 'required|string|max:255',
+                'price' => ['nullable', 'integer', Rule::requiredIf(fn() => !$request->boolean('has_variants'))],
+                'category_ids' => 'nullable|array|min:1',
+                'category_ids.*' => 'integer|exists:categories,id',
+                'product_attributes' => 'nullable|array|min:1',
+                'variants' => ['nullable', 'array', 'min:1', Rule::requiredIf(fn() => $request->boolean('has_variants'))],
+                'variants.*.sku' => 'string|unique:product_variants,sku|required_with:variants|distinct',
+                'variants.*.price' => 'integer|min:1|required_with:variants',
+                'images' => 'array|min:1',
+                'images.*' => 'image|mimes:png,jpg,jpeg,webp|max:2048',
+            ],
+            [
+                'price.required' => 'Harga produk wajib diisi jika produk tidak memiliki varian.',
+                'variants.required' => 'Minimal harus ada 1 varian jika produk memiliki varian.',
+                'variants.*.sku.required_with' => 'Kode SKU pada setiap varian wajib diisi.',
+                'variants.*.sku.distinct' => 'Kode SKU antar varian tidak boleh sama.',
+                'variants.*.sku.unique' => 'Kode SKU ini sudah terdaftar di database.',
+                'variants.*.price.required_with' => 'Harga pada setiap varian wajib diisi.',
+                'variants.*.price.min' => 'Harga pada setiap varian harus lebih dari 0.',
+            ]
+        );
 
         DB::beginTransaction();
 
@@ -52,7 +66,8 @@ class ProductController extends Controller
 
                     foreach ($values as $val) {
                         $cleanVal = trim($val);
-                        if (empty($cleanVal)) continue;
+                        if (empty($cleanVal))
+                            continue;
 
                         $attrValue = AttributeValue::firstOrCreate([
                             'attribute_id' => $attribute->id,
@@ -149,32 +164,55 @@ class ProductController extends Controller
 
     public function editProduct(Request $request)
     {
-        $request->validate([
-            'id' => 'required|integer',
-            'name' => 'required|string',
-            'description' => 'required|string',
-            'price' => 'required|integer',
-            'category_ids' => 'nullable|array|min:1',
-            'category_ids.*' => 'integer|exists:categories,id',
-            'product_attributes' => 'nullable|array',
-            'variants' => 'nullable|array',
-            'variants.*.id' => 'nullable|integer|exists:product_variants,id',
-            'variants.*.sku' => 'required|string',
-            'variants.*.price' => 'required|integer',
-            'variants.*.stock' => 'required|integer|min:0',
-            'existing_cover_id' => 'nullable|integer',
-            'existing_images' => 'array|nullable',
-            'existing_images.*' => 'integer',
-            'cover_image' => 'array|nullable',
-            'cover_image.*' => 'image|nullable|mimes:png,jpg,jpeg,webp|max:2048',
-            'images' => 'array|nullable',
-            'images.*' => 'image|nullable|mimes:png,jpg,jpeg,webp|max:2048',
-        ]);
-        // dd($request->file('cover_image')[0]);
+        $request->validate(
+            [
+                'has_variants' => 'required|boolean',
+                'id' => 'required|integer',
+                'name' => 'required|string',
+                'description' => 'required|string',
+                'price' => ['nullable', 'integer', Rule::requiredIf(fn() => !$request->boolean('has_variants'))],
+                'category_ids' => 'nullable|array|min:1',
+                'category_ids.*' => 'integer|exists:categories,id',
+                'product_attributes' => 'nullable|array',
+                'variants' => ['nullable', 'array', Rule::requiredIf(fn() => $request->boolean('has_variants'))],
+                'variants.*.id' => 'nullable|integer|exists:product_variants,id',
+                'variants.*.sku' => Rule::forEach(function ($value, $attribute, $data) {
+                    $idKey = str_replace('.sku', '.id', $attribute);
+                    $variantId = $data[$idKey] ?? null;
+
+                    return [
+                        'nullable',
+                        'string',
+                        'required_with:variants',
+                        'distinct',
+                        Rule::unique('product_variants', 'sku')->ignore($variantId),
+                    ];
+                    ;
+                }),
+                'variants.*.price' => 'integer|min:1|required_with:variants',
+                'existing_cover_id' => 'nullable|integer',
+                'existing_images' => 'array|nullable',
+                'existing_images.*' => 'integer',
+                'cover_image' => 'array|nullable',
+                'cover_image.*' => 'image|nullable|mimes:png,jpg,jpeg,webp|max:2048',
+                'images' => 'array|nullable',
+                'images.*' => 'image|nullable|mimes:png,jpg,jpeg,webp|max:2048',
+            ],
+            [
+                'price.required' => 'Harga produk wajib diisi jika produk tidak memiliki varian.',
+                'variants.required' => 'Minimal harus ada 1 varian jika produk memiliki varian.',
+                'variants.*.sku.required_with' => 'Kode SKU pada setiap varian wajib diisi.',
+                'variants.*.sku.distinct' => 'Kode SKU antar varian tidak boleh sama.',
+                'variants.*.sku.unique' => 'Kode SKU ini sudah terdaftar di database.',
+                'variants.*.price.required_with' => 'Harga pada setiap varian wajib diisi.',
+                'variants.*.price.min' => 'Harga pada setiap varian harus lebih dari 0.',
+            ]
+        );
         DB::beginTransaction();
 
         try {
             $product = Product::with('images')->findOrFail($request->id);
+            $hasVariants = $request->boolean('has_variants');
 
             $product->update([
                 'name' => $request->name,
@@ -186,18 +224,24 @@ class ProductController extends Controller
                 $product->categories()->sync($request->category_ids);
             }
 
-            if ($request->has('product_attributes') && $request->has('variants')) {
+            if ($hasVariants) {
+                $product->update([
+                    'price' => 0,
+                ]);
+
                 $valueMap = [];
 
                 foreach ($request->product_attributes as $attrData) {
-                    if (empty($attrData['name']) || empty($attrData['values'])) continue;
+                    if (empty($attrData['name']) || empty($attrData['values']))
+                        continue;
 
                     $attribute = Attribute::firstOrCreate(['name' => trim($attrData['name'])]);
                     $values = explode(',', $attrData['values']);
 
                     foreach ($values as $val) {
                         $cleanVal = trim($val);
-                        if (empty($cleanVal)) continue;
+                        if (empty($cleanVal))
+                            continue;
 
                         $attrValue = AttributeValue::firstOrCreate([
                             'attribute_id' => $attribute->id,
@@ -208,11 +252,16 @@ class ProductController extends Controller
                     }
                 }
 
-                $incomingVariantIds = collect($request->variants)->pluck('id')->filter()->toArray();
+                $variantList = $request->input('variants', []);
+                $incomingVariantIds = collect($variantList)->pluck('id')->filter()->toArray();
 
-                $product->variants()->whereNotIn('id', $incomingVariantIds)->delete();
+                $removedVariants = $product->variants()->whereNotIn('id', $incomingVariantIds)->get();
+                foreach ($removedVariants as $removedVariant) {
+                    $removedVariant->attributeValues()->detach();
+                    $removedVariant->delete();
+                }
 
-                foreach ($request->variants as $variantData) {
+                foreach ($variantList as $variantData) {
                     $variant = $product->variants()->updateOrCreate(
                         ['id' => $variantData['id'] ?? null],
                         [
@@ -237,6 +286,12 @@ class ProductController extends Controller
                         $variant->attributeValues()->sync($attributeValueIds);
                     }
                 }
+            } else {
+                $existingVariants = $product->variants()->get();
+                foreach ($existingVariants as $existingVariant) {
+                    $existingVariant->attributeValues()->detach();
+                }
+                $product->variants()->delete();
             }
 
             $currentCover = $product->images()->where('is_primary', true)->first();
@@ -323,7 +378,7 @@ class ProductController extends Controller
             ]);
         }
 
-        Inertia::flash('toast', ['type'=>'success', 'message'=>'Berhasil merubah stock product']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Berhasil merubah stock product']);
 
         return back();
     }
